@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard de entregas</title>
+<link href="https://fonts.googleapis.com/css2?family=Sofia+Sans+Condensed:wght@700;800&family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: mesa de gráficos de jornal aplicada à operação; o achado vira título
+   IDEA: relatório operacional mensal de uma loja de delivery
+   PICTURE: a barra de volume diário em vermelhão, sangrando a largura; abaixo, onde o tempo vai
+   COLOUR+TYPE: branco, preto, vermelhão #ff4a1c como massa única; etapas em azul/água/violeta validados; Sofia Sans Condensed + Instrument Sans
+   LAYOUT: título-achado, filtros numa linha, indicadores, gráficos em pares, ranking, qualidade, método */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#120d0b);--ink:light-dark(#141414,#f2eeec);--mute:light-dark(#5f5f5f,#a59c98);--line:light-dark(#e4e1df,#2e2623);
+--soft:light-dark(#f6f4f2,#1c1613);--ver:light-dark(#ff4a1c,#ff6a43);--s1:light-dark(#257de0,#338ced);--s2:light-dark(#00b894,#00a888);--s3:light-dark(#6a4ce2,#9887ef);
+--good:#0aac23;--warn:#fbb315;--crit:#dc3c3d}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Instrument Sans",system-ui,sans-serif;overflow-x:clip}
+h1,h2,.big{font-family:"Sofia Sans Condensed",sans-serif;font-weight:800;line-height:1.05;text-wrap:balance;margin:0}
+h1{font-size:clamp(32px,4.4vw,52px);max-width:22ch}h2{font-size:clamp(22px,2.4vw,30px)}
+.band{padding:clamp(22px,3.2vw,48px) max(5vw,16px)}.wrap{max-width:1240px;margin:0 auto}
+.lede{color:var(--mute);max-width:70ch;margin:12px 0 0}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-top:22px}
+.filters label{display:flex;flex-direction:column;font-size:13px;color:var(--mute);gap:4px}
+select,input,button{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;min-height:44px;padding:0 12px}
+button{cursor:pointer}button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+:focus-visible{outline:2px solid var(--ver);outline-offset:2px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));border-top:2px solid var(--ink);margin-top:26px}
+.kpi{padding:14px 14px 16px 0;border-bottom:1px solid var(--line)}.kpi small{color:var(--mute);font-size:13px;display:block}
+.kpi .big{font-size:clamp(32px,3.6vw,44px);white-space:nowrap}.kpi .big u{text-decoration:none;font-size:.5em;margin-inline-start:3px;color:var(--mute)}.kpi .sub{font-size:13px;color:var(--mute)}
+.hero{background:var(--soft)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 40px}
+.chart h2{margin-bottom:4px}.chart p{color:var(--mute);margin:0 0 10px;font-size:15px}
+.fig{position:relative;min-height:260px}.fig.tall{min-height:340px}.fig>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--mute);margin:4px 0 8px}.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-inline-end:6px;vertical-align:-1px}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:13px;padding:6px 9px;border-radius:6px;opacity:0;transition:opacity .1s;z-index:9;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:15px}th,td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal}th{font-size:13px;color:var(--mute);font-weight:600;cursor:pointer;user-select:none}
+th[aria-sort]{color:var(--ink)}th[aria-sort=descending]::after{content:" ↓"}th[aria-sort=ascending]::after{content:" ↑"}
+.badge{font-size:12px;font-weight:600;padding:2px 7px;border-radius:99px;white-space:nowrap}
+.b-ok{background:color-mix(in srgb,var(--good) 18%,transparent);color:light-dark(#0b6b1b,#5fdb73)}
+.b-at{background:color-mix(in srgb,var(--warn) 25%,transparent);color:light-dark(#7a5300,#ffd36b)}
+.b-no{background:color-mix(in srgb,var(--crit) 18%,transparent);color:light-dark(#a32222,#ff8a8a)}
+.rows{display:flex;flex-direction:column;gap:10px}.row{display:grid;grid-template-columns:150px 1fr 90px;gap:10px;align-items:center;font-size:15px}
+.row .track{background:var(--soft);border-radius:4px;height:22px;overflow:hidden}.row .track i{display:block;height:100%;background:var(--ver);border-radius:0 4px 4px 0}
+.row .v{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.note{font-size:13px;color:var(--mute)}
+details{border-top:1px solid var(--line);padding-top:12px}summary{cursor:pointer;font-weight:600}
+details li{margin:4px 0}
+.scroll{overflow-x:auto}
+@media(max-width:820px){.grid2{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){table{font-size:13px}.row{grid-template-columns:100px 1fr 70px}}
+@media(prefers-reduced-motion:no-preference){.track i{transition:width .4s}}
+</style></head><body>
+<section class="band hero"><div class="wrap">
+ <h1 id="headline">Carregando dados…</h1>
+ <p class="lede" id="lede"></p>
+ <div class="filters">
+  <label>Período<select id="f_per"><option value="7">Últimos 7 dias</option><option value="14">Últimos 14 dias</option><option value="30">Últimos 30 dias</option><option value="0" selected>Tudo</option></select></label>
+  <label>Horário de abertura<select id="f_hora"><option value="all">Todos</option><option value="pico">Pico (19h–21h59)</option><option value="fora">Fora do pico</option></select></label>
+  <label>Dia da semana<select id="f_dow"><option value="all">Todos</option><option value="fds">Sex–Dom</option><option value="util">Seg–Qui</option></select></label>
+  <label>Motoboy<select id="f_mb"><option value="all">Todos</option></select></label>
+ </div>
+ <div class="kpis" id="kpis"></div>
+</div></section>
+
+<section class="band"><div class="wrap grid2">
+ <div class="chart"><h2>Pedidos por dia</h2><p id="sub_dia"></p><div class="fig" id="c_dia"></div></div>
+ <div class="chart"><h2>Entregues no prazo, por dia</h2><p>% dos pedidos entregues até o prazo do Foody.</p><div class="fig" id="c_prazo"></div></div>
+</div></section>
+
+<section class="band" style="padding-top:0"><div class="wrap grid2">
+ <div class="chart"><h2>Onde o tempo vai, por hora de abertura</h2><p>Minutos médios em cada etapa (só registros válidos).</p>
+  <div class="legend"><span><i style="background:var(--s1)"></i>Até despacho</span><span><i style="background:var(--s2)"></i>Espera p/ saída</span><span><i style="background:var(--s3)"></i>Trânsito</span></div>
+  <div class="fig tall" id="c_hora"></div></div>
+ <div class="chart"><h2 id="h_viagem">Pedidos por viagem</h2><p>Cada barra é o tempo total mediano por pedido, conforme quantos pedidos o motoboy levou na mesma saída.</p>
+  <div class="rows" id="c_viagem"></div><p class="note" style="margin-top:12px" id="n_viagem"></p></div>
+</div></section>
+
+<section class="band" style="padding-top:0"><div class="wrap">
+ <h2>Ranking de motoboys</h2>
+ <p class="lede">Horas ativas = tempo em rota + intervalos de até 60 min entre viagens. Trânsito só com registros válidos. A confiabilidade mostra quanto dos registros do motoboy é suspeito; quem não registra a rota aparece rápido sem ser.</p>
+ <div class="scroll" style="margin-top:14px"><table id="t_rank"><thead><tr>
+  <th data-k="mb">Motoboy</th><th data-k="n">Entregas</th><th data-k="h">Horas ativas</th><th data-k="eh" aria-sort="descending">Entregas/h</th><th data-k="rota">% em rota</th>
+  <th data-k="tr">Trânsito médio</th><th data-k="km">Km rota</th><th data-k="np">No prazo</th><th data-k="sus">Registros suspeitos</th></tr></thead><tbody></tbody></table></div>
+ <p class="note">Mostra motoboys com pelo menos 20 entregas no filtro.</p>
+</div></section>
+
+<section class="band" style="padding-top:0"><div class="wrap grid2">
+ <div class="chart"><h2>Qualidade dos registros de trânsito</h2><p id="sub_q"></p><div class="rows" id="c_q"></div></div>
+ <div class="chart"><h2>Canal de venda</h2><p>Pedidos e tempo total mediano por origem.</p><div class="rows" id="c_canal"></div></div>
+</div></section>
+
+<section class="band" style="padding-top:0"><div class="wrap">
+ <details><summary>Como os números são calculados</summary>
+ <ul>
+  <li><b>Até despacho</b> = despacho − abertura. Inclui cozinha + fila: o "pronto" do Foody é automático (~10 min) e não mede a cozinha. Fora da média: &lt; 2 min (pedidos lançados à mão) e &gt; 60 min.</li>
+  <li><b>Viagem</b> = pedidos do mesmo motoboy coletados antes da primeira entrega válida. Saída = última coleta.</li>
+  <li><b>Espera p/ saída</b> = saída da viagem − despacho. <b>Trânsito</b> = 1º pedido: entrega − saída; demais: entrega − entrega anterior.</li>
+  <li><b>Retorno/ocioso</b> = próxima saída − última entrega; intervalos &gt; 60 min contam como pausa/fim de turno.</li>
+  <li><b>Fora da média de trânsito</b>: baixa imediata (coleta→entrega &lt; 2 min), baixa no retorno (entrega a ±2 min da próxima coleta), baixa em lote (2º pedido &lt; 1 min após o anterior), 1º trecho &gt; 45 km/h, trecho &gt; 60 min. Tempo total &gt; 120 min sai da mediana.</li>
+  <li>Fonte: relatório Foody da loja Pitizza Curitiba, 01/10 a 22/11/2026, pedidos finalizados com entregador. Sem dados de clientes.</li>
+ </ul></details>
+</div></section>
+<div class="tip" id="tip"></div>
+<script>
+{
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const med=a=>{a=a.filter(x=>x!=null).sort((x,y)=>x-y);if(!a.length)return null;const m=a.length>>1;return a.length%2?a[m]:(a[m-1]+a[m])/2};
+const avg=a=>{a=a.filter(x=>x!=null);return a.length?a.reduce((s,x)=>s+x,0)/a.length:null};
+const f1=x=>x==null?'–':x.toFixed(1).replace('.',',');
+const fmin=x=>x==null?'–':f1(x)+' min';const kmin=x=>x==null?'–':f1(x)+'<u>min</u>';
+const pct=x=>x==null?'–':Math.round(x*100)+'%';
+const MOT=['','Baixa imediata','Baixa no retorno','Baixa em lote','Rápido demais (>45 km/h)','Trânsito > 60 min'];
+const DOW=['dom','seg','ter','qua','qui','sex','sáb'];
+let P=[],V=[];
+const tip=$('tip');
+function showTip(e,html){tip.innerHTML=html;tip.style.opacity=1;const x=Math.min(e.clientX+14,innerWidth-tip.offsetWidth-8);tip.style.left=x+'px';tip.style.top=(e.clientY-36)+'px'}
+function hideTip(){tip.style.opacity=0}
+function bindTips(svg){svg.querySelectorAll('[data-t]').forEach(n=>{n.addEventListener('mousemove',e=>showTip(e,n.dataset.t));n.addEventListener('mouseleave',hideTip)})}
+
+function filtered(){
+ const per=+$('f_per').value,hora=$('f_hora').value,dow=$('f_dow').value,mb=$('f_mb').value;
+ const dias=[...new Set(P.map(p=>p.dia))].sort();const corte=per?dias[Math.max(0,dias.length-per)]:dias[0];
+ const okDia=d=>{if(d<corte)return false;if(dow==='all')return true;const w=new Date(d+'T12:00:00').getDay();return dow==='fds'?(w===5||w===6||w===0):(w>=1&&w<=4)};
+ const okHora=h=>hora==='all'||(hora==='pico'?(h>=19&&h<=21):!(h>=19&&h<=21));
+ const p=P.filter(o=>okDia(o.dia)&&okHora(o.hora)&&(mb==='all'||o.motoboy===mb));
+ const v=V.filter(t=>okDia(t.dia)&&okHora(t.hora_saida)&&(mb==='all'||t.motoboy===mb));
+ return{p,v};
+}
+
+function bars(el,data,{fmt=f1,color='var(--ver)',every=1}={}){
+ const s=document.createElementNS('http://www.w3.org/2000/svg','svg');el.innerHTML='';el.appendChild(s);
+ const draw=()=>{const W=s.clientWidth,H=s.clientHeight,pl=34,pb=24,pt=8;if(!W)return;
+  const mx=Math.max(1,...data.map(d=>d.v||0)),sc=v=>(H-pb-pt)*v/mx,bw=(W-pl)/data.length,gap=Math.min(2,bw*.2);
+  const step=niceStep(mx);let g='';
+  for(let y=0;y<=mx;y+=step){const yy=H-pb-sc(y);g+=`<line x1="${pl}" x2="${W}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${pl-6}" y="${yy+4}" text-anchor="end" font-size="11" fill="var(--mute)">${y}</text>`}
+  const lab=Math.max(every,Math.ceil(data.length/(W/42)));
+  data.forEach((d,i)=>{const h=sc(d.v||0),x=pl+i*bw+gap/2,w=Math.max(1,bw-gap);
+   g+=`<path d="M${x},${H-pb}V${H-pb-h+Math.min(4,h)}q0,-${Math.min(4,h)} ${Math.min(4,w/2)},-${Math.min(4,h)}H${x+w-Math.min(4,w/2)}q${Math.min(4,w/2)},0 ${Math.min(4,w/2)},${Math.min(4,h)}V${H-pb}Z" fill="${color}"/>`;
+   g+=`<rect x="${pl+i*bw}" y="${pt}" width="${bw}" height="${H-pb-pt}" fill="transparent" data-t="${esc(d.tip||d.label+': '+fmt(d.v))}"/>`;
+   if(i%lab===0)g+=`<text x="${x+w/2}" y="${H-6}" text-anchor="middle" font-size="11" fill="var(--mute)">${esc(d.label)}</text>`});
+  s.innerHTML=g;bindTips(s)};
+ new ResizeObserver(draw).observe(s);draw();
+}
+function niceStep(mx){const r=mx/4,p=10**Math.floor(Math.log10(r||1)),n=r/p;return (n<1.5?1:n<3?2:n<7?5:10)*p}
+
+function line(el,data){
+ const s=document.createElementNS('http://www.w3.org/2000/svg','svg');el.innerHTML='';el.appendChild(s);
+ const draw=()=>{const W=s.clientWidth,H=s.clientHeight,pl=40,pb=24,pt=10;if(!W||!data.length)return;
+  const lo=Math.max(0,Math.floor((Math.min(...data.map(d=>d.v))*100-5)/10)*10)/100,sc=v=>H-pb-(H-pb-pt)*(v-lo)/(1-lo),xs=i=>pl+(W-pl-8)*(data.length>1?i/(data.length-1):.5);
+  let g='';for(let y=lo;y<=1.0001;y+=.1){g+=`<line x1="${pl}" x2="${W}" y1="${sc(y)}" y2="${sc(y)}" stroke="var(--line)"/><text x="${pl-6}" y="${sc(y)+4}" text-anchor="end" font-size="11" fill="var(--mute)">${Math.round(y*100)}%</text>`}
+  g+=`<path d="${data.map((d,i)=>(i?'L':'M')+xs(i)+','+sc(d.v)).join('')}" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>`;
+  const lab=Math.ceil(data.length/(W/42));data.forEach((d,i)=>{if(i%lab===0)g+=`<text x="${xs(i)}" y="${H-6}" text-anchor="middle" font-size="11" fill="var(--mute)">${esc(d.label)}</text>`});
+  g+=`<line id="xh" y1="${pt}" y2="${H-pb}" stroke="var(--mute)" stroke-dasharray="3 3" opacity="0"/><circle id="xd" r="5" fill="var(--ink)" stroke="var(--bg)" stroke-width="2" opacity="0"/><rect x="${pl}" y="0" width="${W-pl}" height="${H}" fill="transparent" id="hit"/>`;
+  s.innerHTML=g;const hit=s.querySelector('#hit'),xh=s.querySelector('#xh'),xd=s.querySelector('#xd');
+  hit.addEventListener('mousemove',e=>{const r=s.getBoundingClientRect(),i=Math.max(0,Math.min(data.length-1,Math.round((e.clientX-r.left-pl)/(W-pl-8)*(data.length-1)))),d=data[i];
+   xh.setAttribute('x1',xs(i));xh.setAttribute('x2',xs(i));xh.setAttribute('opacity',1);xd.setAttribute('cx',xs(i));xd.setAttribute('cy',sc(d.v));xd.setAttribute('opacity',1);showTip(e,d.tip)});
+  hit.addEventListener('mouseleave',()=>{xh.setAttribute('opacity',0);xd.setAttribute('opacity',0);hideTip()})};
+ new ResizeObserver(draw).observe(s);draw();
+}
+
+function stack(el,data){
+ const s=document.createElementNS('http://www.w3.org/2000/svg','svg');el.innerHTML='';el.appendChild(s);const C=['var(--s1)','var(--s2)','var(--s3)'],N=['Até despacho','Espera p/ saída','Trânsito'];
+ const draw=()=>{const W=s.clientWidth,H=s.clientHeight,pl=34,pb=40,pt=8;if(!W)return;
+  const mx=Math.max(1,...data.map(d=>d.parts.reduce((a,b)=>a+(b||0),0))),sc=v=>(H-pb-pt)*v/mx,bw=(W-pl)/data.length,w=Math.min(56,bw*.6);
+  let g='';const st=niceStep(mx);for(let y=0;y<=mx;y+=st){const yy=H-pb-sc(y);g+=`<line x1="${pl}" x2="${W}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${pl-6}" y="${yy+4}" text-anchor="end" font-size="11" fill="var(--mute)">${y}</text>`}
+  data.forEach((d,i)=>{const x=pl+i*bw+(bw-w)/2;let y=H-pb;const tot=d.parts.reduce((a,b)=>a+(b||0),0);
+   d.parts.forEach((v,j)=>{const h=sc(v||0);if(h>0){g+=`<rect x="${x}" y="${y-h+(j?0:0)}" width="${w}" height="${Math.max(0,h-2)}" rx="${j===2?3:0}" fill="${C[j]}"/>`}y-=h});
+   g+=`<text x="${x+w/2}" y="${H-pb-sc(tot)-6}" text-anchor="middle" font-size="12" fill="var(--ink)">${Math.round(tot)}</text>`;
+   g+=`<text x="${x+w/2}" y="${H-pb+16}" text-anchor="middle" font-size="12" fill="var(--mute)">${esc(d.label)}</text><text x="${x+w/2}" y="${H-pb+31}" text-anchor="middle" font-size="11" fill="var(--mute)">${d.n} ped.</text>`;
+   g+=`<rect x="${pl+i*bw}" y="${pt}" width="${bw}" height="${H-pb-pt}" fill="transparent" data-t="${esc(d.label+' · '+d.n+' pedidos · '+N.map((n,j)=>n+' '+f1(d.parts[j])).join(' · '))}"/>`});
+  s.innerHTML=g;bindTips(s)};
+ new ResizeObserver(draw).observe(s);draw();
+}
+
+function rows(el,data,fmtV){const mx=Math.max(1e-9,...data.map(d=>d.v||0));
+ el.innerHTML=data.map(d=>`<div class="row"><span>${esc(d.label)}</span><span class="track"><i style="width:${((d.v||0)/mx*100).toFixed(1)}%"></i></span><span class="v">${fmtV(d)}</span></div>`).join('')}
+
+let sortK='eh',sortDir=-1;
+function render(){
+ const{p,v}=filtered();const n=p.length;
+ const t1=p.filter(o=>!o.x_desp).map(o=>o.t1),t3=p.filter(o=>!o.motivo).map(o=>o.t3),tot=p.filter(o=>!o.x_total).map(o=>o.total);
+ const prz=p.filter(o=>o.no_prazo!=null),np=prz.length?prz.filter(o=>o.no_prazo).length/prz.length:null;
+ const val=p.filter(o=>!o.motivo).length/(n||1);
+ const dias=new Set(p.map(o=>o.dia)).size;
+ $('kpis').innerHTML=[['Pedidos',n.toLocaleString('pt-BR'),`${dias} dias · ${f1(n/(dias||1))} por dia`],['Tempo total',kmin(med(tot)),'mediana por pedido'],['No prazo',pct(np),'prazo do Foody'],
+  ['Até despacho',kmin(avg(t1)),'média · cozinha + fila'],['Espera p/ saída',kmin(med(p.map(o=>o.t2))),'mediana'],['Trânsito',kmin(avg(t3)),'média por pedido, válidos'],
+  ['Retorno/ocioso',kmin(med(v.map(t=>t.ocioso))),'mediana entre viagens'],['Registros válidos',pct(val),'de trânsito']]
+  .map(([l,b,s])=>`<div class="kpi"><small>${l}</small><div class="big">${b}</div><div class="sub">${s}</div></div>`).join('');
+
+ const byDia={};p.forEach(o=>(byDia[o.dia]||(byDia[o.dia]=[])).push(o));const ds=Object.keys(byDia).sort();
+ const lab=d=>{const dt=new Date(d+'T12:00:00');return dt.getDate()+'/'+(dt.getMonth()+1)};
+ bars($('c_dia'),ds.map(d=>({label:lab(d),v:byDia[d].length,tip:`${DOW[new Date(d+'T12:00:00').getDay()]} ${lab(d)}: ${byDia[d].length} pedidos`})));
+ $('sub_dia').textContent=`Média de ${f1(n/(ds.length||1))} pedidos por dia no período.`;
+ line($('c_prazo'),ds.map(d=>{const a=byDia[d].filter(o=>o.no_prazo!=null);const r=a.length?a.filter(o=>o.no_prazo).length/a.length:0;return{label:lab(d),v:r,tip:`${lab(d)}: ${pct(r)} no prazo (${a.length} pedidos)`}}));
+
+ const hs=[...new Set(p.map(o=>o.hora))].sort((a,b)=>(a<6?a+24:a)-(b<6?b+24:b));
+ stack($('c_hora'),hs.map(h=>{const a=p.filter(o=>o.hora===h);return{label:h+'h',n:a.length,parts:[avg(a.filter(o=>!o.x_desp).map(o=>o.t1)),med(a.map(o=>o.t2)),avg(a.filter(o=>!o.motivo).map(o=>o.t3))]}}).filter(d=>d.n>=5));
+
+ const grp=k=>k>=4?'4 ou mais':k+' pedido'+(k>1?'s':'');const G={};p.filter(o=>!o.x_total).forEach(o=>(G[grp(o.nv)]||(G[grp(o.nv)]=[])).push(o));
+ const gk=['1 pedido','2 pedidos','3 pedidos','4 ou mais'].filter(k=>G[k]);
+ rows($('c_viagem'),gk.map(k=>{const a=G[k],z=a.filter(o=>o.no_prazo!=null);return{label:k,v:med(a.map(o=>o.total)),n:a.length,np:z.length?z.filter(o=>o.no_prazo).length/z.length:null}}),d=>`${fmin(d.v)} · ${pct(d.np)}`);
+ const vv=v.filter(t=>!t.suspeita),rv=k=>med(vv.filter(t=>(k>=4?t.pedidos>=4:t.pedidos===k)).map(t=>t.rota));
+ $('n_viagem').textContent=`Valor à direita: tempo total mediano · % no prazo. Tempo de rua mediano por viagem: 1 pedido ${fmin(rv(1))}, 2 pedidos ${fmin(rv(2))}, 3 pedidos ${fmin(rv(3))}.`;
+
+ const M={};p.forEach(o=>{const m=M[o.motoboy]||(M[o.motoboy]={mb:o.motoboy,n:0,sus:0,tr:[],np:[],km:0});m.n++;if(o.motivo)m.sus++;else if(o.t3!=null)m.tr.push(o.t3);if(o.no_prazo!=null)m.np.push(o.no_prazo);m.km+=o.km||0});
+ v.forEach(t=>{const m=M[t.motoboy];if(!m)return;m.rotaMin=(m.rotaMin||0)+(t.rota||0);m.hiat=(m.hiat||0)+(t.hiato||0)});
+ let R=Object.values(M).filter(m=>m.n>=20).map(m=>{const h=((m.rotaMin||0)+(m.hiat||0))/60;return{mb:m.mb,n:m.n,h,eh:h?m.n/h:null,rota:h?(m.rotaMin||0)/60/h:null,tr:avg(m.tr),km:m.km,np:m.np.length?avg(m.np):null,sus:m.sus/m.n}});
+ R.sort((a,b)=>{const x=a[sortK],y=b[sortK];return typeof x==='string'?sortDir*x.localeCompare(y):sortDir*((x??-1)-(y??-1))});
+ const conf=s=>s<.15?'<span class="badge b-ok">✓ confiável</span>':s<.35?'<span class="badge b-at">! atenção</span>':'<span class="badge b-no">✕ não confiável</span>';
+ document.querySelector('#t_rank tbody').innerHTML=R.map(r=>`<tr><td>${esc(r.mb)}</td><td>${r.n}</td><td>${f1(r.h)}</td><td>${f1(r.eh)}</td><td>${pct(r.rota)}</td><td>${r.sus>=.35?'<span class="note">sem base</span>':fmin(r.tr)}</td><td>${Math.round(r.km)}</td><td>${pct(r.np)}</td><td>${pct(r.sus)} ${conf(r.sus)}</td></tr>`).join('')||'<tr><td colspan="9">Sem motoboys com 20+ entregas neste filtro.</td></tr>';
+
+ const q=[1,2,3,4,5].map(k=>({label:MOT[k],v:p.filter(o=>o.motivo===k).length}));
+ $('sub_q').textContent=`${pct(1-val)} dos registros de trânsito saem da média (${(n-p.filter(o=>!o.motivo).length).toLocaleString('pt-BR')} de ${n.toLocaleString('pt-BR')}).`;
+ rows($('c_q'),q,d=>`${d.v} · ${pct(d.v/(n||1))}`);
+ const cs=['iFood','Brendi','Direto'].map(c=>{const a=p.filter(o=>o.canal===c);return{label:c,v:a.length,t:med(a.filter(o=>!o.x_total).map(o=>o.total))}}).filter(d=>d.v);
+ rows($('c_canal'),cs,d=>`${d.v} · ${fmin(d.t)}`);
+
+ const g1=G['1 pedido'],g2=G['2 pedidos'];
+ if(g1&&g2&&g2.length>=20){const d=med(g2.map(o=>o.total))-med(g1.map(o=>o.total));
+  $('headline').textContent=`Pedido que sai em dupla leva ${Math.round(d)} min a mais; ${pct(1-val)} dos registros de rota não são confiáveis`;}
+ else $('headline').textContent=`${n} pedidos no período · ${pct(np)} no prazo`;
+ $('lede').textContent=`Pitizza Curitiba (Água Verde) · ${lab(ds[0]||'')} a ${lab(ds[ds.length-1]||'')} · ${n.toLocaleString('pt-BR')} pedidos entregues, ${v.length.toLocaleString('pt-BR')} viagens. Tempo total mediano de ${fmin(med(tot))} e ${pct(np)} no prazo.`;
+}
+document.querySelectorAll('#t_rank th').forEach(th=>th.addEventListener('click',()=>{const k=th.dataset.k;sortDir=sortK===k?-sortDir:(k==='mb'?1:-1);sortK=k;
+ document.querySelectorAll('#t_rank th').forEach(x=>x.removeAttribute('aria-sort'));th.setAttribute('aria-sort',sortDir>0?'ascending':'descending');render()}));
+['f_per','f_hora','f_dow','f_mb'].forEach(id=>$(id).addEventListener('change',render));
+const toObj=d=>d.linhas.map(r=>Object.fromEntries(d.campos.map((c,i)=>[c,r[i]])));
+Promise.all(['data/pedidos.json','data/viagens.json'].map(u=>fetch(u).then(r=>r.json()))).then(([a,b])=>{
+ P=toObj(a);V=toObj(b);
+ const mbs=[...new Set(P.map(o=>o.motoboy))].map(m=>[m,P.filter(o=>o.motoboy===m).length]).filter(x=>x[1]>=20).sort((a,b)=>b[1]-a[1]);
+ $('f_mb').insertAdjacentHTML('beforeend',mbs.map(([m,c])=>`<option value="${esc(m)}">${esc(m)} (${c})</option>`).join(''));
+ render();
+}).catch(e=>{$('headline').textContent='Não foi possível carregar os dados';$('lede').textContent=String(e)});
+}
+</script></body></html>

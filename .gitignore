@@ -1,0 +1,11 @@
+# dados com informações pessoais nunca vão para o repositório
+*pedidos_raw*.json
+*pedidos_final*.json
+*.xls
+*.xlsx
+foody_teste_*/
+foody_monitor_*/
+.env
+
+# base histórica (dados de negócio) fica fora enquanto o repositório for público
+web/dash/data/

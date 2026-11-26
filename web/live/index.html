@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painel ao vivo cozinha</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: painel operacional de cozinha, lido a 4 metros, sem enfeite
+   IDEA: trilho de comandas (KDS) — cada pedido é uma comanda que anda da cozinha até o cliente
+   PICTURE: o próprio quadro kanban com cronômetros vivos
+   COLOUR+TYPE: grafite (TV) + comanda papel; verde/âmbar/vermelho só para estado; Barlow Condensed nos números
+   LAYOUT: barra de indicadores, 4 colunas de etapa, faixa de motoboys embaixo */
+:root{color-scheme:dark;--bg:#141619;--panel:#1d2024;--line:#2c3036;--ink:#eef0f2;--mute:#9aa1a9;--paper:#f3eee4;--pink:#1a1a1a;
+--ok:#2fbf71;--warn:#f2a516;--bad:#ef4b4b;--acc:#e8442e}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 Barlow,system-ui,sans-serif;overflow-x:clip}
+.num{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-variant-numeric:tabular-nums}
+header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;padding:14px max(2vw,14px);border-bottom:1px solid var(--line)}
+.brand{display:flex;flex-direction:column}.brand b{font-size:20px}.brand span{color:var(--mute);font-size:13px}
+.clock{font-size:clamp(40px,4vw,64px);line-height:1;margin-inline-start:auto}
+.ctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+button,select,input{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;min-height:40px;padding:0 12px;cursor:pointer}
+button[aria-pressed=true]{background:var(--ink);color:var(--bg)}button:focus-visible,input:focus-visible{outline:2px solid var(--warn);outline-offset:2px}
+input[type=range]{padding:0;width:min(260px,40vw);accent-color:var(--acc)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border-bottom:1px solid var(--line)}
+.kpi{padding:12px 16px;box-shadow:inset -1px 0 var(--line),inset 0 -1px var(--line)}.kpi small{display:block;color:var(--mute);font-size:13px}.kpi .num{font-size:clamp(30px,3vw,46px);line-height:1.05}
+.kpi.bad .num{color:var(--bad)}.kpi.ok .num{color:var(--ok)}.kpi.warn .num{color:var(--warn)}
+.board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:12px max(2vw,14px)}
+.col{background:var(--panel);border-radius:12px;padding:10px;min-height:52vh;display:flex;flex-direction:column;gap:8px}
+.col h2{margin:2px 4px 6px;font-size:16px;display:flex;justify-content:space-between;align-items:baseline;font-weight:600}
+.col h2 .num{font-size:28px}
+.card{background:var(--paper);color:var(--pink);border-radius:8px;padding:8px 10px 10px;border-inline-start:8px solid var(--ok);position:relative}
+.card.warn{border-color:var(--warn)}.card.bad{border-color:var(--bad)}
+.card.late{box-shadow:0 0 0 3px var(--bad)}
+.card .top{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.card .id{font-size:30px;line-height:1}.card .t{font-size:34px;line-height:1}
+.card.warn .t{color:#a86a00}.card.bad .t{color:#c62828}
+.card .meta{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:13px;color:#4a4a4a;margin-top:4px}
+.tag{font-size:12px;font-weight:600;border-radius:4px;padding:1px 6px;background:#e2dccf}
+.tag.late{background:var(--bad);color:#fff}.tag.sus{background:#4a4a4a;color:#fff}.tag.ok{background:#cdeedb;color:#11643a}
+.bar{height:6px;background:#ddd5c6;border-radius:3px;margin-top:6px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ok)}
+.card.warn .bar i{background:var(--warn)}.card.bad .bar i,.card.late .bar i{background:var(--bad)}
+.empty{color:var(--mute);text-align:center;padding:20px 0;font-size:14px}
+.riders{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;padding:0 max(2vw,14px) 14px}
+.rider{background:var(--panel);border-radius:10px;padding:10px 12px;border-top:4px solid var(--mute)}
+.rider.rota{border-color:var(--ok)}.rider.loja{border-color:var(--warn)}.rider.pausa{border-color:var(--line)}
+.rider b{font-size:17px}.rider .st{display:flex;justify-content:space-between;align-items:baseline}.rider .st .num{font-size:30px}
+.rider .sm{color:var(--mute);font-size:13px;display:flex;gap:10px;flex-wrap:wrap}
+.sec{padding:4px max(2vw,14px) 6px;color:var(--mute);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+details{margin:0 max(2vw,14px) 18px;background:var(--panel);border-radius:10px;padding:10px 14px}
+details summary{cursor:pointer;font-weight:600}
+.cfg{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:10px}
+.cfg label{display:flex;flex-direction:column;font-size:13px;color:var(--mute);gap:4px}.cfg input{width:100%;cursor:text;font-size:16px}
+@media(max-width:1100px){.board{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.board{grid-template-columns:minmax(0,1fr)}.col{min-height:0}.clock{margin-inline-start:0}}
+@media(prefers-reduced-motion:no-preference){.card{transition:border-color .4s}}
+</style></head><body>
+<header>
+ <div class="brand"><b>Pitizza Água Verde · ao vivo</b><span>Simulação do expediente de 25/11 com pedidos reais, sem dados de clientes</span></div>
+ <div class="ctl" role="group" aria-label="Reprodução">
+  <button id="play" aria-pressed="true">Pausar</button>
+  <button data-sp="1" aria-pressed="false">1×</button><button data-sp="10" aria-pressed="true">10×</button><button data-sp="60" aria-pressed="false">60×</button>
+  <input id="seek" type="range" min="0" max="1" step="30" aria-label="Horário da simulação">
+ </div>
+ <div class="clock num" id="clock">--:--</div>
+</header>
+<section class="kpis" id="kpis"></section>
+<main class="board" id="board"></main>
+<div class="sec"><span>Motoboys</span><span>Horas ativas = tempo em rota + intervalos de até 60 min entre viagens</span></div>
+<section class="riders" id="riders"></section>
+<details><summary>Metas e alertas</summary>
+ <div class="cfg">
+  <label>Meta até despacho (min)<input id="m_desp" type="number" min="1" value="15"></label>
+  <label>Meta espera p/ saída (min)<input id="m_esp" type="number" min="1" value="5"></label>
+  <label>Meta trânsito (min)<input id="m_tr" type="number" min="1" value="20"></label>
+  <label>Meta tempo total (min)<input id="m_tot" type="number" min="1" value="30"></label>
+  <label>Alerta âmbar a partir de (% da meta)<input id="m_alert" type="number" min="10" max="100" value="80"></label>
+ </div>
+</details>
+<script>
+{
+const RAW=[[1,"Matheus","17:52:45","18:09:38","18:10:04","18:26:41","18:32:45","iFood",107.52,1,1,""],[2,"André","18:08:39","18:20:11","18:22:37","18:37:28","18:48:39","iFood",144.75,2,1,""],[3,"Ruan","18:23:22","18:49:53","18:53:31","19:38:17","19:03:22","Direto",319.6,5,1,"retorno"],[4,"Alysson","18:29:03","18:41:06","18:43:28","18:59:12","19:09:03","Brendi",196.74,3,1,""],[5,"Matheus","18:38:27","18:49:58","18:50:22","19:03:22","19:18:27","iFood",92.16,4,1,""],[6,"André","18:55:02","19:04:13","19:05:06","19:16:59","19:35:02","Direto",109.9,6,1,""],[7,"Duarte","19:00:10","19:08:59","19:10:13","19:24:37","19:40:10","iFood",92.16,7,1,""],[8,"Alysson","19:00:46","19:12:17","19:14:03","19:43:30","19:40:46","iFood",202.8,8,1,""],[9,"Matheus","19:05:21","19:17:47","19:18:13","19:29:09","19:45:21","iFood",87.01,9,1,""],[10,"André","19:06:44","19:25:31","19:25:58","19:34:10","19:46:44","Brendi",108.91,10,1,""],[11,"Duarte","19:17:28","19:33:41","19:34:17","19:43:30","19:57:28","Direto",97.88,11,1,""],[12,"Ruan","19:22:34","19:36:13","19:38:27","19:56:22","20:02:34","iFood",106.67,12,1,""],[13,"Alysson","19:28:06","19:48:00","19:53:47","20:01:51","20:08:06","iFood",141.35,15,1,""],[14,"Matheus","19:28:57","19:44:12","19:44:42","19:50:54","20:08:57","iFood",59.26,13,2,""],[15,"Matheus","19:33:01","19:44:12","19:44:46","19:59:14","20:13:01","iFood",91.93,13,2,""],[16,"Ruan","19:36:49","19:58:58","20:01:13","20:26:31","20:16:49","Direto",70.73,16,2,""],[17,"André","19:37:24","19:52:44","19:53:08","20:10:31","20:17:24","iFood",111.16,14,1,""],[18,"Duarte","19:37:27","19:53:57","20:09:23","20:09:29","20:17:27","iFood",104.16,18,1,"imediata"],[19,"Ruan","19:46:22","19:58:58","20:01:13","20:13:52","20:26:22","iFood",43.16,16,2,""],[20,"Alysson","19:53:48","20:04:55","20:05:57","20:44:19","20:33:48","iFood",95.4,17,1,"retorno"],[21,"Matheus","20:09:08","20:36:37","20:36:57","20:37:01","20:49:08","Brendi",109.77,19,1,"imediata"],[22,"André","20:19:23","20:40:18","20:40:36","20:40:39","20:59:23","iFood",44.19,21,1,"imediata"],[23,"Alysson","20:20:30","20:39:56","20:44:24","20:55:33","21:00:30","iFood",77.99,22,1,""],[24,"Duarte","20:25:34","20:39:51","20:40:11","20:59:13","21:05:34","iFood",178.95,20,1,""],[26,"Ruan","20:34:18","20:47:59","20:48:14","21:00:09","21:14:18","Brendi",114.66,23,1,""],[27,"Matheus","20:35:43","20:48:04","20:48:16","21:03:03","21:15:43","iFood",93.35,24,2,""],[28,"Matheus","20:41:02","20:48:33","20:49:05","21:03:08","21:21:02","iFood",47.05,24,2,""],[29,"André","20:41:37","20:53:06","20:53:37","21:05:26","21:21:37","iFood",68.55,25,2,""],[30,"André","20:44:53","20:53:06","20:53:42","21:13:56","21:24:53","iFood",38.11,25,2,""],[31,"Duarte","20:47:36","21:08:56","21:24:23","21:24:27","21:27:36","iFood",106.67,28,1,"imediata"],[32,"Matheus","20:48:43","21:09:16","21:09:36","21:16:46","21:28:43","iFood",139.54,26,1,""],[33,"Ruan","20:53:51","21:24:08","21:44:23","21:44:31","21:33:51","iFood",172.95,32,2,"imediata"],[34,"Alysson","21:08:17","21:19:42","21:22:23","21:44:24","21:48:17","iFood",43.16,27,1,""],[35,"André","21:08:52","21:26:02","21:26:45","21:39:14","21:48:52","iFood",92.16,29,2,""],[36,"André","21:13:27","21:26:02","21:26:51","21:32:15","21:53:27","Direto",114.67,29,2,""],[37,"Matheus","21:14:03","21:29:55","21:30:50","21:39:39","21:54:03","iFood",116.92,30,2,""],[38,"Matheus","21:18:44","21:28:37","21:30:56","21:48:06","21:58:44","iFood",49.19,30,2,""],[39,"Duarte","21:27:32","21:42:16","21:42:49","21:59:05","22:07:32","iFood",124.07,31,1,""],[40,"Ruan","21:32:49","21:43:35","21:44:46","22:48:11","22:12:49","iFood",83.11,32,2,"retorno"],[41,"André","21:36:31","21:46:15","21:47:11","22:39:57","22:16:31","iFood",80.16,33,1,""],[42,"Alysson","21:37:07","21:50:59","21:52:26","22:03:18","22:17:07","iFood",110.04,34,1,""],[43,"Matheus","22:06:54","22:26:50","22:27:07","22:36:53","22:46:54","iFood",92.16,35,1,""],[44,"André","22:24:43","22:46:10","22:46:22","23:06:23","23:04:43","Direto",206.14,36,1,""],[45,"Ruan","22:27:10","22:46:14","22:48:22","23:07:19","23:07:10","iFood",70.75,37,1,""],[46,"Duarte","22:58:59","23:13:19","23:13:44","23:38:55","23:38:59","iFood",76.13,38,1,""],[47,"Alysson","23:00:07","23:15:25","23:25:47","23:29:32","23:40:07","iFood",117.86,39,1,""],[48,"Alysson","23:23:21","23:41:42","23:55:08","23:56:45","24:03:21","iFood",73.75,40,1,"imediata"]];
+const s=t=>{const[h,m,x]=t.split(':').map(Number);return h*3600+m*60+x};
+const O=RAW.map(r=>({id:r[0],mb:r[1],ab:s(r[2]),de:s(r[3]),co:s(r[4]),en:s(r[5]),due:s(r[6]),canal:r[7],val:r[8],vg:r[9],nv:r[10],sus:r[11]}));
+const T0=Math.min(...O.map(o=>o.ab))-10*60, T1=Math.max(...O.map(o=>o.en))+15*60;
+const trips={};O.forEach(o=>{const k=o.mb+'|'+o.vg;(trips[k]||(trips[k]={mb:o.mb,sa:0,fim:0,ids:[]}));trips[k].sa=Math.max(trips[k].sa,o.co);trips[k].fim=Math.max(trips[k].fim,o.en);trips[k].ids.push(o)});
+O.forEach(o=>{const tr=trips[o.mb+'|'+o.vg];o.pos=[...tr.ids].sort((a,b)=>a.en-b.en).indexOf(o)+1;o.sa=tr.sa});
+const $=id=>document.getElementById(id), esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let now=s('19:30:00'),speed=10,playing=true;
+const seek=$('seek');seek.min=T0;seek.max=T1;seek.value=now;
+const mm=sec=>{sec=Math.max(0,Math.round(sec));const m=Math.floor(sec/60),x=sec%60;return m+':'+String(x).padStart(2,'0')};
+const hh=sec=>{sec=((sec%86400)+86400)%86400;return String(Math.floor(sec/3600)).padStart(2,'0')+':'+String(Math.floor(sec%3600/60)).padStart(2,'0')};
+const meta=()=>({desp:+$('m_desp').value*60,esp:+$('m_esp').value*60,tr:+$('m_tr').value*60,tot:+$('m_tot').value*60,al:+$('m_alert').value/100});
+const lvl=(el,m,a)=>el>=m?'bad':el>=m*a?'warn':'';
+const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+function card(o,stage,M){
+ let el,lim,label,extra='';
+ if(stage==='coz'){el=now-o.ab;lim=M.desp;label='na cozinha'}
+ else if(stage==='esp'){el=now-o.de;lim=M.esp;label='aguardando saída';extra=`<span>${esc(o.mb)}</span>`}
+ else if(stage==='rota'){el=now-o.co;lim=M.tr;label='em trânsito';extra=`<span>${esc(o.mb)}</span>`+(o.nv>1?`<span class="tag">viagem ${o.pos}/${o.nv}</span>`:'')}
+ const late=now>o.due, cls=lvl(el,lim,M.al);
+ const pct=Math.min(100,(now-o.ab)/(o.due-o.ab)*100);
+ return `<article class="card ${cls} ${late?'late':''}"><div class="top"><span class="id num">#${o.id}</span><span class="t num">${mm(el)}</span></div>
+ <div class="meta"><span class="tag">${esc(o.canal)}</span>${extra}<span>${label}</span><span>total ${mm(now-o.ab)}</span>${late?`<span class="tag late">ATRASADO +${mm(now-o.due)}</span>`:`<span>prazo ${hh(o.due)}</span>`}</div>
+ <div class="bar"><i style="width:${pct.toFixed(0)}%"></i></div></article>`}
+function done(o,M){const tot=o.en-o.ab,late=o.en>o.due,cls=late?'bad':tot>M.tot?'warn':'';
+ return `<article class="card ${cls}"><div class="top"><span class="id num">#${o.id}</span><span class="t num">${mm(tot)}</span></div>
+ <div class="meta"><span>${esc(o.mb)}</span><span>entregue ${hh(o.en)}</span>${late?`<span class="tag late">+${mm(o.en-o.due)} atraso</span>`:`<span class="tag ok">no prazo</span>`}${o.sus?`<span class="tag sus">baixa ${esc(o.sus)}</span>`:''}</div></article>`}
+function render(){
+ const M=meta();$('clock').textContent=hh(now);seek.value=now;
+ const vis=O.filter(o=>o.ab<=now);
+ const coz=vis.filter(o=>now<o.de).sort((a,b)=>a.ab-b.ab), esp=vis.filter(o=>o.de<=now&&now<o.co).sort((a,b)=>a.de-b.de),
+  rota=vis.filter(o=>o.co<=now&&now<o.en).sort((a,b)=>a.co-b.co), ent=vis.filter(o=>o.en<=now), rec=ent.filter(o=>now-o.en<30*60).sort((a,b)=>b.en-a.en);
+ const ativos=[...coz,...esp,...rota], atras=ativos.filter(o=>now>o.due).length;
+ const despV=vis.filter(o=>o.de<=now).map(o=>o.de-o.ab).filter(x=>x>=120&&x<=3600);
+ const trV=ent.filter(o=>!o.sus).map(o=>o.pos===1?o.en-o.sa:null).filter(x=>x!==null&&x>60&&x<=3600);
+ const noPrazo=ent.filter(o=>o.en<=o.due).length, naMeta=ent.filter(o=>o.en-o.ab<=M.tot).length;
+ const K=[['Em andamento',ativos.length,''],['Atrasados agora',atras,atras?'bad':'ok'],
+  ['Até despacho médio',despV.length?mm(avg(despV)):'–',avg(despV)>M.desp?'warn':''],
+  ['Trânsito médio',trV.length?mm(avg(trV)):'–',avg(trV)>M.tr?'warn':''],
+  ['Entregues hoje',ent.length,''],['No prazo',ent.length?Math.round(noPrazo/ent.length*100)+'%':'–',noPrazo/ent.length<.85?'warn':'ok'],
+  [`Dentro da meta ${M.tot/60} min`,ent.length?Math.round(naMeta/ent.length*100)+'%':'–','']];
+ $('kpis').innerHTML=K.map(([l,v,c])=>`<div class="kpi ${c}"><small>${l}</small><div class="num">${v}</div></div>`).join('');
+ const col=(t,list,html)=>`<section class="col"><h2>${t}<span class="num">${list.length}</span></h2>${list.length?list.map(html).join(''):'<div class="empty">Nenhum pedido</div>'}</section>`;
+ $('board').innerHTML=col('Na cozinha',coz,o=>card(o,'coz',M))+col('Aguardando saída',esp,o=>card(o,'esp',M))+col('Em rota',rota,o=>card(o,'rota',M))+col('Entregues · 30 min',rec,o=>done(o,M));
+ const mbs=[...new Set(O.filter(o=>o.de<=now).map(o=>o.mb))];
+ $('riders').innerHTML=mbs.map(mb=>{
+  const tr=Object.values(trips).filter(t=>t.mb===mb&&t.sa<=now).sort((a,b)=>a.sa-b.sa);
+  const em=tr.find(t=>now<t.fim);
+  let ativo=0,last=null;tr.forEach(t=>{if(last!==null){const g=t.sa-last;if(g>0&&g<=3600)ativo+=g}ativo+=Math.min(now,t.fim)-t.sa;last=t.fim});
+  let st,cls,el;
+  if(em){st='Em rota';cls='rota';el=now-em.sa}else if(last!==null){el=now-last;if(el>3600){st='Pausa / fora';cls='pausa'}else{st='Retorno / na loja';cls='loja';ativo+=el}}else{st='Aguardando 1ª saída';cls='pausa';el=0}
+  const n=O.filter(o=>o.mb===mb&&o.en<=now).length;
+  return `<div class="rider ${cls}"><b>${esc(mb)}</b><div class="st"><span>${st}</span><span class="num">${mm(el)}</span></div>
+  <div class="sm"><span>${n} entregas</span><span>${(ativo/3600).toFixed(1)} h ativas</span><span>${ativo>0?(n/(ativo/3600)).toFixed(1):'–'}/h</span></div></div>`}).join('');
+}
+let lastT=performance.now();
+function loop(t){const dt=(t-lastT)/1000;lastT=t;if(playing){now=Math.min(T1,now+dt*speed)}render();setTimeout(()=>requestAnimationFrame(loop),250)}
+$('play').onclick=e=>{playing=!playing;e.target.textContent=playing?'Pausar':'Continuar';e.target.setAttribute('aria-pressed',playing)};
+document.querySelectorAll('[data-sp]').forEach(b=>b.onclick=()=>{speed=+b.dataset.sp;document.querySelectorAll('[data-sp]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+seek.oninput=()=>{now=+seek.value;render()};
+requestAnimationFrame(loop);
+}
+</script></body></html>
