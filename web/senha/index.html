@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nova senha</title>
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#fff,#120d0b);--ink:light-dark(#141414,#f2eeec);--mute:light-dark(#5f5f5f,#a59c98);--line:light-dark(#e4e1df,#2e2623)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;padding:20px}
+form{width:min(380px,100%);display:flex;flex-direction:column;gap:12px}h1{font-size:34px;line-height:1.05;margin:0 0 6px}p{margin:0;color:var(--mute)}
+label{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--mute)}
+input,button{font:inherit;font-size:16px;min-height:46px;border-radius:8px;padding:0 12px}input{border:1px solid var(--line);background:transparent;color:inherit}
+button{border:0;background:var(--ink);color:var(--bg);font-weight:600;cursor:pointer}
+.m{font-size:14px;min-height:1.3em}.m.err{color:#dc3c3d}.m.ok{color:#0aac23}a{color:inherit}
+</style></head><body>
+<form id="f" hidden><h1>Criar nova senha</h1><p id="quem"></p>
+ <label>Nova senha (mín. 8 caracteres)<input name="a" type="password" minlength="8" required autocomplete="new-password"></label>
+ <label>Repita a senha<input name="b" type="password" minlength="8" required autocomplete="new-password"></label>
+ <button>Salvar senha</button><div class="m" id="m" role="alert"></div></form>
+<div id="aviso"><p>Abrindo o link…</p></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<script src="../shared/supa.js"></script>
+<script>
+{
+const sb=Painel.sb,f=document.getElementById('f'),m=document.getElementById('m'),av=document.getElementById('aviso');
+const mostrar=s=>{if(!s)return;av.hidden=true;f.hidden=false;document.getElementById('quem').textContent='Conta: '+(s.user?.email||'');history.replaceState(null,'',location.pathname)};
+sb.auth.onAuthStateChange((ev,s)=>{if(ev==='PASSWORD_RECOVERY'||ev==='SIGNED_IN')mostrar(s)});
+setTimeout(async()=>{const {data:{session}}=await sb.auth.getSession();if(session)mostrar(session);
+ else av.innerHTML='<p>Este link expirou ou já foi usado. Peça um novo na tela de login, em "Esqueci minha senha".</p><p><a href="../">Ir para o início</a></p>'},1500);
+f.addEventListener('submit',async e=>{e.preventDefault();
+ if(f.a.value!==f.b.value){m.className='m err';m.textContent='As senhas não são iguais.';return}
+ m.className='m';m.textContent='Salvando…';
+ const {error}=await sb.auth.updateUser({password:f.a.value});
+ if(error){m.className='m err';m.textContent=error.message.includes('different')?'A nova senha precisa ser diferente da atual.':'Não foi possível salvar: '+error.message;return}
+ m.className='m ok';m.innerHTML='Senha alterada. <a href="../">Ir para o início</a>';f.querySelector('button').disabled=true});
+}
+</script></body></html>

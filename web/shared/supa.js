@@ -13,7 +13,9 @@
   .lg-box label{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--mute,#5f5f5f)}
   .lg-box input{font:inherit;font-size:16px;min-height:46px;padding:0 12px;border-radius:8px;border:1px solid var(--line,#ccc);background:transparent;color:inherit}
   .lg-box button{font:inherit;font-size:16px;min-height:46px;border-radius:8px;border:0;background:var(--ink,#141414);color:var(--bg,#fff);cursor:pointer;font-weight:600}
-  .lg-err{color:#dc3c3d;font-size:14px;min-height:1.2em}`;
+  .lg-err{color:#dc3c3d;font-size:14px;min-height:1.2em}
+  .lg-box .lg-esq{background:none;color:inherit;border:1px solid var(--line,#ccc);font-weight:400}
+  .lg-err.ok{color:#0aac23}`;
 
   function telaLogin(titulo) {
     return new Promise((resolve) => {
@@ -22,10 +24,19 @@
       w.innerHTML = `<form class="lg-box"><h1></h1><p>Entre com o e-mail e a senha do seu acesso.</p>
         <label>E-mail<input type="email" name="e" autocomplete="username" required></label>
         <label>Senha<input type="password" name="s" autocomplete="current-password" required></label>
-        <button type="submit">Entrar</button><div class="lg-err" role="alert"></div></form>`;
+        <button type="submit">Entrar</button>
+        <button type="button" class="lg-esq">Esqueci minha senha</button><div class="lg-err" role="alert"></div></form>`;
       w.querySelector("h1").textContent = titulo;
       document.body.appendChild(w);
       const f = w.querySelector("form"), err = w.querySelector(".lg-err");
+      w.querySelector(".lg-esq").addEventListener("click", async () => {
+        const email = f.e.value.trim();
+        if (!email) { err.className = "lg-err"; err.textContent = "Digite seu e-mail acima e clique de novo."; return; }
+        err.className = "lg-err"; err.textContent = "Enviando…";
+        const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + "/senha/" });
+        err.className = error ? "lg-err" : "lg-err ok";
+        err.textContent = error ? "Não foi possível enviar agora. Tente de novo em alguns minutos." : "Se o e-mail estiver cadastrado, você vai receber um link para criar uma nova senha.";
+      });
       f.addEventListener("submit", async (ev) => {
         ev.preventDefault(); err.textContent = "Entrando…";
         const { data, error } = await sb.auth.signInWithPassword({ email: f.e.value.trim(), password: f.s.value });
