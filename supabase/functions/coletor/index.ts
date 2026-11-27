@@ -133,14 +133,16 @@ async function coletarLoja(loja: { id: string }) {
 
   // 4) Recalcula métricas do dia quando algum pedido termina
   const terminou = eventos.some((e) => ["delivered", "closed", "cancelled", "rejected"].includes(e.status_novo));
+  let erroMetricas: string | null = null;
   if (terminou) {
     const { data: dias } = await sb.from("pedidos").select("dia").in("uid", eventos.map((e) => e.uid));
     for (const d of new Set((dias || []).map((x: any) => x.dia))) {
-      await sb.rpc("recalcular_metricas", { p_loja: loja.id, p_dia: d });
+      const { error } = await sb.rpc("recalcular_metricas", { p_loja: loja.id, p_dia: d });
+      if (error) erroMetricas = `métricas ${d}: ${error.message}`;
     }
   }
 
-  await salvar({ ultimo_sucesso: new Date().toISOString(), ultimo_erro: null });
+  await salvar({ ultimo_sucesso: new Date().toISOString(), ultimo_erro: erroMetricas });
   return { loja: loja.id, pedidos: linhas.length, eventos: eventos.length, rastreio, recalculou: terminou };
 }
 
