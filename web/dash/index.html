@@ -55,10 +55,12 @@ details li{margin:4px 0}
  <h1 id="headline">Carregando dados…</h1>
  <p class="lede" id="lede"></p>
  <div class="filters">
+  <label id="w_loja" hidden>Loja<select id="f_loja"></select></label>
   <label>Período<select id="f_per"><option value="7">Últimos 7 dias</option><option value="14">Últimos 14 dias</option><option value="30">Últimos 30 dias</option><option value="0" selected>Tudo</option></select></label>
   <label>Horário de abertura<select id="f_hora"><option value="all">Todos</option><option value="pico">Pico (19h–21h59)</option><option value="fora">Fora do pico</option></select></label>
   <label>Dia da semana<select id="f_dow"><option value="all">Todos</option><option value="fds">Sex–Dom</option><option value="util">Seg–Qui</option></select></label>
   <label>Motoboy<select id="f_mb"><option value="all">Todos</option></select></label>
+  <button id="b_sair" type="button">Sair</button>
  </div>
  <div class="kpis" id="kpis"></div>
 </div></section>
@@ -98,10 +100,12 @@ details li{margin:4px 0}
   <li><b>Espera p/ saída</b> = saída da viagem − despacho. <b>Trânsito</b> = 1º pedido: entrega − saída; demais: entrega − entrega anterior.</li>
   <li><b>Retorno/ocioso</b> = próxima saída − última entrega; intervalos &gt; 60 min contam como pausa/fim de turno.</li>
   <li><b>Fora da média de trânsito</b>: baixa imediata (coleta→entrega &lt; 2 min), baixa no retorno (entrega a ±2 min da próxima coleta), baixa em lote (2º pedido &lt; 1 min após o anterior), 1º trecho &gt; 45 km/h, trecho &gt; 60 min. Tempo total &gt; 120 min sai da mediana.</li>
-  <li>Fonte: relatório Foody da loja Pitizza Curitiba, 01/10 a 22/11/2026, pedidos finalizados com entregador. Sem dados de clientes.</li>
+  <li>Fonte: banco do painel (histórico importado do relatório Foody + coletor da API a cada 30 s), pedidos com entregador. Sem dados de clientes.</li>
  </ul></details>
 </div></section>
 <div class="tip" id="tip"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<script src="../shared/supa.js"></script>
 <script>
 {
 const $=id=>document.getElementById(id);
@@ -221,17 +225,39 @@ function render(){
  if(g1&&g2&&g2.length>=20){const d=med(g2.map(o=>o.total))-med(g1.map(o=>o.total));
   $('headline').textContent=`Pedido que sai em dupla leva ${Math.round(d)} min a mais; ${pct(1-val)} dos registros de rota não são confiáveis`;}
  else $('headline').textContent=`${n} pedidos no período · ${pct(np)} no prazo`;
- $('lede').textContent=`Pitizza Curitiba (Água Verde) · ${lab(ds[0]||'')} a ${lab(ds[ds.length-1]||'')} · ${n.toLocaleString('pt-BR')} pedidos entregues, ${v.length.toLocaleString('pt-BR')} viagens. Tempo total mediano de ${fmin(med(tot))} e ${pct(np)} no prazo.`;
+ $('lede').textContent=`${LOJA?LOJA.nome:''} · ${lab(ds[0]||'')} a ${lab(ds[ds.length-1]||'')} · ${n.toLocaleString('pt-BR')} pedidos entregues, ${v.length.toLocaleString('pt-BR')} viagens. Tempo total mediano de ${fmin(med(tot))} e ${pct(np)} no prazo.`;
 }
 document.querySelectorAll('#t_rank th').forEach(th=>th.addEventListener('click',()=>{const k=th.dataset.k;sortDir=sortK===k?-sortDir:(k==='mb'?1:-1);sortK=k;
  document.querySelectorAll('#t_rank th').forEach(x=>x.removeAttribute('aria-sort'));th.setAttribute('aria-sort',sortDir>0?'ascending':'descending');render()}));
 ['f_per','f_hora','f_dow','f_mb'].forEach(id=>$(id).addEventListener('change',render));
-const toObj=d=>d.linhas.map(r=>Object.fromEntries(d.campos.map((c,i)=>[c,r[i]])));
-Promise.all(['data/pedidos.json','data/viagens.json'].map(u=>fetch(u).then(r=>r.json()))).then(([a,b])=>{
- P=toObj(a);V=toObj(b);
+const MOTC={'baixa imediata':1,'baixa no retorno':2,'baixa em lote':3,'rápido demais':4,'trânsito > 60 min':5};
+let LOJA=null;
+async function carregar(){
+ $('headline').textContent='Carregando dados…';
+ const sb=Painel.sb,id=LOJA.id;
+ const [ped,vg]=await Promise.all([
+  Painel.tudo(()=>sb.from('v_dash_pedidos').select('dia,hora,entregador,t1,t2,t3,total,no_prazo,motivo_exclusao,excluir_despacho,excluir_total,nv,pos,km,valor,canal,viagem').eq('loja_id',id).order('dia').order('viagem').order('pos')),
+  Painel.tudo(()=>sb.from('v_dash_viagens').select('viagem,dia,motoboy,hora_saida,pedidos,rota,hiato,ocioso,suspeita').eq('loja_id',id).order('viagem'))]);
+ const n=x=>x==null?null:+x;
+ P=ped.map(r=>({dia:r.dia,hora:r.hora,motoboy:r.entregador,t1:n(r.t1),t2:n(r.t2),t3:n(r.t3),total:n(r.total),no_prazo:r.no_prazo==null?null:(r.no_prazo?1:0),
+  motivo:MOTC[r.motivo_exclusao]||0,x_desp:r.excluir_despacho?1:0,x_total:r.excluir_total?1:0,nv:r.nv,pos:r.pos,km:n(r.km),valor:n(r.valor),canal:r.canal,viagem:r.viagem}));
+ V=vg.map(r=>({viagem:r.viagem,dia:r.dia,motoboy:r.motoboy,hora_saida:r.hora_saida,pedidos:r.pedidos,rota:n(r.rota),hiato:n(r.hiato),ocioso:n(r.ocioso),suspeita:r.suspeita?1:0}));
  const mbs=[...new Set(P.map(o=>o.motoboy))].map(m=>[m,P.filter(o=>o.motoboy===m).length]).filter(x=>x[1]>=20).sort((a,b)=>b[1]-a[1]);
- $('f_mb').insertAdjacentHTML('beforeend',mbs.map(([m,c])=>`<option value="${esc(m)}">${esc(m)} (${c})</option>`).join(''));
+ $('f_mb').innerHTML='<option value="all">Todos</option>'+mbs.map(([m,c])=>`<option value="${esc(m)}">${esc(m)} (${c})</option>`).join('');
+ if(!P.length){$('headline').textContent='Sem pedidos calculados para esta loja';$('lede').textContent='';return}
  render();
-}).catch(e=>{$('headline').textContent='Não foi possível carregar os dados';$('lede').textContent=String(e)});
+}
+$('b_sair').addEventListener('click',()=>Painel.sair());
+$('f_loja').addEventListener('change',()=>{LOJA=LOJAS.find(l=>l.id===$('f_loja').value);Painel.guardarLoja(LOJA.id);carregar().catch(falha)});
+let LOJAS=[];
+const falha=e=>{$('headline').textContent='Não foi possível carregar os dados';$('lede').textContent=String(e.message||e)};
+Painel.exigirLogin('Dashboard de entregas').then(async()=>{
+ LOJAS=await Painel.lojas();
+ if(!LOJAS.length){$('headline').textContent='Seu usuário ainda não tem acesso a nenhuma loja';$('lede').textContent='Peça à consultoria para liberar o acesso.';return}
+ LOJA=Painel.lojaPreferida(LOJAS);
+ $('f_loja').innerHTML=LOJAS.map(l=>`<option value="${esc(l.id)}">${esc(l.nome)}</option>`).join('');$('f_loja').value=LOJA.id;
+ $('w_loja').hidden=LOJAS.length<2;
+ await carregar();
+}).catch(falha);
 }
 </script></body></html>
