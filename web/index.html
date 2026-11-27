@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Foody Painel</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700&display=swap" rel="stylesheet">
 <style>
-:root{color-scheme:light dark;--bg:light-dark(#fff,#120d0b);--ink:light-dark(#141414,#f2eeec);--mute:light-dark(#5f5f5f,#a59c98);--line:light-dark(#e4e1df,#2e2623);--ver:light-dark(#ff4a1c,#ff6a43)}
+:root{color-scheme:light dark;--bg:light-dark(#fcf7ef,#1b0d20);--ink:light-dark(#3c193f,#fcf7ef);--mute:light-dark(#6e5872,#bba5bf);--line:light-dark(#eadfd3,#40264a);--ver:#fe7237}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;padding:24px}
-main{max-width:560px;width:100%}h1{font-size:40px;line-height:1.05;margin:0 0 8px}p{color:var(--mute);margin:0 0 24px}
+main{max-width:560px;width:100%}h1{font-size:40px;line-height:1.05;margin:0 0 8px;font-family:Outfit,system-ui,sans-serif}.marca{display:flex;align-items:center;gap:10px;font:700 24px/1 Outfit,system-ui,sans-serif;margin-bottom:28px}.marca svg{width:36px;height:33px}
+footer{margin-top:28px;font-size:13px;color:var(--mute)}p{color:var(--mute);margin:0 0 24px}
 a{display:block;padding:18px 20px;border:1px solid var(--line);border-radius:12px;color:inherit;text-decoration:none;margin-bottom:12px}
 a b{display:block;font-size:20px}a span{color:var(--mute);font-size:15px}a:hover,a:focus-visible{border-color:var(--ver);outline:none}
 </style></head><body><main>
+<div class="marca"><svg viewBox="310 300 310 285" aria-hidden="true"><path fill="#fe7237" d="M421,381V330q0,-23,23,-23H590q23,0,23,23V467H506V381Z"/><path fill="currentColor" d="M353,397H490V579H353q-37,0,-37,-37V434q0,-37,37,-37Z"/><path fill="currentColor" d="M506,483H613V552q0,27,-27,27H506Z"/></svg><span>Dobra</span></div>
 <h1>Foody Painel</h1><p>Acompanhamento das entregas das lojas que usam o Foody Delivery.</p>
 <a href="live/"><b>Painel ao vivo</b><span>Kanban para a TV da cozinha, com cronômetros por etapa</span></a>
 <a href="dash/"><b>Dashboard histórico</b><span>Tempos, prazo, pedidos por viagem e ranking de motoboys</span></a>
 <a href="config/"><b>Configurações</b><span>Clientes, unidades, tokens Foody e acessos (administradores)</span></a>
+<footer>Este é um produto desenvolvido por <b>Dobra SaaS</b>.</footer>
 </main></body></html>

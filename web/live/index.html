@@ -6,15 +6,15 @@
 /* VOICE: painel operacional de cozinha, lido a 4 metros, sem enfeite
    IDEA: trilho de comandas (KDS) — cada pedido é uma comanda que anda da cozinha até o cliente
    PICTURE: o próprio quadro kanban com cronômetros vivos
-   COLOUR+TYPE: grafite (TV) + comanda papel; verde/âmbar/vermelho só para estado; Barlow Condensed nos números
+   COLOUR+TYPE: roxo Dobra (TV) + comanda creme, laranja Dobra como destaque; verde/âmbar/vermelho só para estado; Barlow Condensed nos números
    LAYOUT: barra de indicadores, 4 colunas de etapa, faixa de motoboys embaixo */
-:root{color-scheme:dark;--bg:#141619;--panel:#1d2024;--line:#2c3036;--ink:#eef0f2;--mute:#9aa1a9;--paper:#f3eee4;--dark:#1a1a1a;
---ok:#2fbf71;--warn:#f2a516;--bad:#ef4b4b;--acc:#e8442e}
+:root{color-scheme:dark;--bg:#1b0d20;--panel:#2a1530;--line:#40264a;--ink:#fcf7ef;--mute:#bba5bf;--paper:#fcf7ef;--dark:#3c193f;--dobra-roxo:#fcf7ef;--dobra-ink:#fcf7ef;
+--ok:#2fbf71;--warn:#f2a516;--bad:#ef4b4b;--acc:#fe7237}
 *{box-sizing:border-box;min-width:0}[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 Barlow,system-ui,sans-serif;overflow-x:clip}
 .num{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-variant-numeric:tabular-nums}
 header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;padding:14px max(2vw,14px);border-bottom:1px solid var(--line)}
-.brand{display:flex;flex-direction:column}.brand b{font-size:20px}.brand span{color:var(--mute);font-size:13px}
+.brand{display:flex;flex-direction:column;position:relative;padding-inline-start:46px}.brand .logo{position:absolute;left:0;top:50%;transform:translateY(-50%);width:36px;height:33px;color:var(--ink)}.brand .logo svg{width:100%;height:100%}.brand b{font-size:20px}.brand span{color:var(--mute);font-size:13px}
 .brand span.off{color:var(--bad);font-weight:600}
 .clock{font-size:clamp(40px,4vw,64px);line-height:1;margin-inline-start:auto}
 .ctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
@@ -32,10 +32,10 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--warn);outline-
 .card .top{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
 .card .id{font-size:30px;line-height:1}.card .t{font-size:34px;line-height:1}
 .card.warn .t{color:#a86a00}.card.bad .t{color:#c62828}
-.card .meta{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:13px;color:#4a4a4a;margin-top:4px}
-.tag{font-size:12px;font-weight:600;border-radius:4px;padding:1px 6px;background:#e2dccf}
-.tag.late{background:var(--bad);color:#fff}.tag.sus{background:#4a4a4a;color:#fff}.tag.ok{background:#cdeedb;color:#11643a}
-.bar{height:6px;background:#ddd5c6;border-radius:3px;margin-top:6px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ok)}
+.card .meta{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:13px;color:#5a3d5e;margin-top:4px}
+.tag{font-size:12px;font-weight:600;border-radius:4px;padding:1px 6px;background:#f1e4d6;color:#3c193f}
+.tag.late{background:var(--bad);color:#fff}.tag.sus{background:#3c193f;color:#fcf7ef}.tag.ok{background:#cdeedb;color:#11643a}
+.bar{height:6px;background:#eadccd;border-radius:3px;margin-top:6px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ok)}
 .card.warn .bar i{background:var(--warn)}.card.bad .bar i,.card.late .bar i{background:var(--bad)}
 .empty{color:var(--mute);text-align:center;padding:20px 0;font-size:14px}
 .riders{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;padding:0 max(2vw,14px) 14px}
@@ -44,23 +44,32 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--warn);outline-
 .rider b{font-size:17px}.rider .st{display:flex;justify-content:space-between;align-items:baseline}.rider .st .num{font-size:30px}
 .rider .ld{font-size:16px;margin:2px 0 4px}.rider .ld b{font-family:"Barlow Condensed",sans-serif;font-size:22px}.rider .ld.sai{color:var(--warn)}
 .rider .sm{color:var(--mute);font-size:13px;display:flex;gap:10px;flex-wrap:wrap}
-.chk{display:flex;flex-wrap:wrap;gap:8px;padding:0 max(2vw,14px) 12px}.chk .it{background:#2a2420;border:1px solid #5a4636;border-radius:8px;padding:6px 10px;font-size:14px}.chk .it b{font-family:"Barlow Condensed",sans-serif;font-size:20px;margin-inline-end:6px}.chk .it span{color:var(--mute)}
-.placar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:4px max(2vw,14px) 12px}.placar div{background:var(--panel);border-radius:10px;padding:10px 16px;display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-top:4px solid var(--mute)}.placar div.rota{border-color:var(--ok)}.placar div.loja{border-color:var(--warn)}.placar span{font-size:16px;color:var(--mute)}.placar b{font-family:"Barlow Condensed",sans-serif;font-size:clamp(40px,4vw,60px);line-height:1}
-@media(max-width:600px){.placar{grid-template-columns:minmax(0,1fr)}}
+.chk{display:flex;flex-wrap:wrap;gap:8px;padding:0 max(2vw,14px) 12px}.chk .it{background:#3a1d33;border:1px solid #6a3a4a;border-radius:8px;padding:6px 10px;font-size:14px}.chk .it b{font-family:"Barlow Condensed",sans-serif;font-size:20px;margin-inline-end:6px}.chk .it span{color:var(--mute)}
+.placar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:4px max(2vw,14px) 12px}.placar div{background:var(--panel);border-radius:10px;padding:10px 16px;display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-top:4px solid var(--mute)}.placar div.rota{border-color:var(--ok)}.placar div.loja{border-color:var(--warn)}.placar div.via{border-color:var(--acc)}.placar small{display:block;font-size:13px;color:var(--mute)}.placar span{font-size:16px;color:var(--mute)}.placar b{font-family:"Barlow Condensed",sans-serif;font-size:clamp(40px,4vw,60px);line-height:1}
+@media(max-width:900px){.placar{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.placar{grid-template-columns:minmax(0,1fr)}}
+.metas{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;padding:12px max(2vw,14px) 0}
+.alvo{background:var(--panel);border-radius:10px;padding:10px 14px}.alvo .l{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:15px;color:var(--mute)}.alvo .l b{font-family:"Barlow Condensed",sans-serif;font-size:30px;color:var(--ink)}
+.alvo .tr{height:12px;border-radius:6px;background:var(--line);margin-top:6px;overflow:hidden}.alvo .tr i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--acc),var(--warn))}.alvo.ok .tr i{background:var(--ok)}
+#festa{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(27,13,32,.8)}#festa canvas{position:absolute;inset:0;width:100%;height:100%}
+#festa .msg{position:relative;text-align:center;padding:24px 36px;border-radius:18px;background:var(--paper);color:var(--dark);box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#festa .msg b{display:block;font-family:"Barlow Condensed",sans-serif;font-size:clamp(44px,7vw,110px);line-height:1;color:var(--acc)}#festa .msg span{display:block;font-size:clamp(20px,2.4vw,34px);margin-top:8px}
+@media(prefers-reduced-motion:no-preference){#festa .msg{animation:pulo .9s cubic-bezier(.2,1.6,.4,1)}}@keyframes pulo{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 .sec{padding:4px max(2vw,14px) 6px;color:var(--mute);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
 @media(max-width:1100px){.board{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.board{grid-template-columns:minmax(0,1fr)}.col{min-height:0}.clock{margin-inline-start:0}}
 @media(prefers-reduced-motion:no-preference){.card{transition:border-color .4s}}
 </style></head><body>
 <header>
- <div class="brand"><b id="nome">Painel ao vivo</b><span id="sync">Conectando…</span></div>
+ <div class="brand"><span class="logo" id="logo"></span><b id="nome">Painel ao vivo</b><span id="sync">Conectando…</span></div>
  <div class="ctl">
   <select id="f_loja" hidden aria-label="Loja"></select>
+  <button id="b_som" type="button" aria-pressed="false">Som: desligado</button>
   <button id="b_tela" type="button">Tela cheia</button>
   <button id="b_sair" type="button">Sair</button>
  </div>
  <div class="clock num" id="clock">--:--</div>
 </header>
+<section class="metas" id="metasbar"></section>
 <section class="kpis" id="kpis"></section>
 <main class="board" id="board"></main>
 <div class="sec" id="h_chk" hidden><span>Verificar · fora do kanban</span><span>Pedidos acima do limite da etapa (provável baixa esquecida na Foody)</span></div>
@@ -68,14 +77,15 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--warn);outline-
 <section class="placar" id="placar"></section>
 <div class="sec"><span>Motoboys hoje</span><span id="metas"></span></div>
 <section class="riders" id="riders"></section>
+<div id="festa" hidden><canvas id="confete"></canvas><div class="msg" role="alert"><b id="f_tit"></b><span id="f_sub"></span></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
 <script src="../shared/supa.js"></script>
 <script>
 {
 const $=id=>document.getElementById(id), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ATIVOS=['open','ready','dispatched','accepted','onGoing'];
-const COLS='uid,numero,status,canal,entregador,aberto_em,despachado_em,coletado_em,entregue_em,prazo_em,dia,qtd_pizzas';
-let LOJA=null,LOJAS=[],M={},canal=null,ultimoColetor=null;
+const COLS='uid,numero,status,canal,entregador,aberto_em,despachado_em,coletado_em,entregue_em,prazo_em,dia,qtd_pizzas,valor_total';
+let LOJA=null,LOJAS=[],M={},canal=null,ultimoColetor=null,METAS=[];
 const PED=new Map();
 const ms=v=>v?new Date(v).getTime():null;
 const mm=sec=>{sec=Math.max(0,Math.round(sec/1000));const m=Math.floor(sec/60),x=sec%60;return m+':'+String(x).padStart(2,'0')};
@@ -85,7 +95,7 @@ const somaPz=l=>{const v=l.map(o=>o.pz).filter(x=>x!=null);return v.length?v.red
 const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
 const lvl=(el,m)=>el>=m?'bad':el>=m*.8?'warn':'';
 function guardar(r){if(!r||!r.uid)return;PED.set(r.uid,{id:r.numero||'',uid:r.uid,st:r.status,canal:r.canal||'',mb:(r.entregador||'').trim(),
- ab:ms(r.aberto_em),de:ms(r.despachado_em),co:ms(r.coletado_em),en:ms(r.entregue_em),due:ms(r.prazo_em),dia:r.dia,pz:r.qtd_pizzas})}
+ ab:ms(r.aberto_em),de:ms(r.despachado_em),co:ms(r.coletado_em),en:ms(r.entregue_em),due:ms(r.prazo_em),dia:r.dia,pz:r.qtd_pizzas,val:r.valor_total==null?0:+r.valor_total})}
 
 async function carregar(){
  PED.clear();const hoje=Painel.diaOperacional();
@@ -93,6 +103,7 @@ async function carregar(){
  rows.forEach(guardar);
  const {data:e}=await Painel.sb.from('coletor_estado').select('ultimo_sucesso,ultimo_erro').eq('loja_id',LOJA.id).maybeSingle();
  ultimoColetor=e;
+ const {data:mt}=await Painel.sb.from('metas_semana').select('dia_semana,meta_vendas,meta_viagens').eq('loja_id',LOJA.id);METAS=mt||[];
 }
 function assinar(){
  if(canal)Painel.sb.removeChannel(canal);
@@ -108,6 +119,32 @@ function viagens(lista){
   if(at.length)vs.push(at);
   out[mb]=vs.map(v=>({sa:Math.max(...v.map(x=>x.co)),fim:v.every(x=>x.en)?Math.max(...v.map(x=>x.en)):null,ps:v}))}
  return out}
+
+// ---------- gamificação: som e comemoração ----------
+const brl=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+let AC=null,somOn=false;
+try{somOn=localStorage.getItem('foody_som')==='1'}catch(_){}
+function ctx(){if(!AC){const C=window.AudioContext||window.webkitAudioContext;if(C)AC=new C()}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function nota(f,t0,d,tipo='triangle',vol=.25){const a=ctx();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=tipo;o.frequency.value=f;
+ g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(vol,t0+.02);g.gain.exponentialRampToValueAtTime(.001,t0+d);o.connect(g).connect(a.destination);o.start(t0);o.stop(t0+d+.05)}
+function fanfarra(){const a=ctx();if(!a||!somOn)return;const t=a.currentTime+.05;
+ [523.25,659.25,783.99,1046.5].forEach((f,i)=>nota(f,t+i*.14,.25));
+ [523.25,659.25,783.99,1046.5].forEach(f=>nota(f,t+.62,1.6,'sawtooth',.07));[1046.5,1318.5].forEach(f=>nota(f,t+.62,1.6,'triangle',.18));
+ for(let i=0;i<10;i++){const tt=t+.7+Math.random()*1.6,buf=a.createBuffer(1,a.sampleRate*.06,a.sampleRate),d=buf.getChannelData(0);
+  for(let k=0;k<d.length;k++)d[k]=(Math.random()*2-1)*Math.pow(1-k/d.length,3);const s=a.createBufferSource(),g=a.createGain();g.gain.value=.25;s.buffer=buf;s.connect(g).connect(a.destination);s.start(tt)}}
+function confete(ms){const cv=$('confete'),c=cv.getContext('2d');cv.width=innerWidth;cv.height=innerHeight;
+ const cores=['#e8442e','#f2a516','#2fbf71','#4ea1ff','#f3eee4','#c86bfa'];
+ const P=Array.from({length:220},()=>({x:Math.random()*cv.width,y:-20-Math.random()*cv.height*.6,vx:(Math.random()-.5)*4,vy:2+Math.random()*4,r:Math.random()*6.3,vr:(Math.random()-.5)*.3,w:6+Math.random()*8,h:4+Math.random()*6,c:cores[Math.random()*cores.length|0]}));
+ const fim=performance.now()+ms;(function q(t){c.clearRect(0,0,cv.width,cv.height);P.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.05;p.r+=p.vr;
+  if(p.y>cv.height+20&&t<fim-1500){p.y=-20;p.vy=2+Math.random()*3}c.save();c.translate(p.x,p.y);c.rotate(p.r);c.fillStyle=p.c;c.fillRect(-p.w/2,-p.h/2,p.w,p.h);c.restore()});
+  if(t<fim)requestAnimationFrame(q);else c.clearRect(0,0,cv.width,cv.height)})(performance.now())}
+let festaAte=0;
+function festa(tit,sub){$('f_tit').textContent=tit;$('f_sub').textContent=sub;$('festa').hidden=false;festaAte=Date.now()+9000;
+ if(!matchMedia('(prefers-reduced-motion: reduce)').matches)confete(8000);fanfarra();
+ setTimeout(()=>{if(Date.now()>=festaAte)$('festa').hidden=true},9000)}
+function checarMeta(tipo,atual,meta,tit,sub){if(!meta||atual<meta)return;const k=`foody_festa_${LOJA.id}_${Painel.diaOperacional()}_${tipo}`;
+ let ja=false;try{ja=localStorage.getItem(k)==='1';localStorage.setItem(k,'1')}catch(_){ja=!!window['__'+k];window['__'+k]=1}
+ if(!ja)festa(tit,sub)}
 
 function card(o,stage,now){
  let el,lim,label,extra='';
@@ -188,7 +225,16 @@ function render(){
  const ativosMb=new Set(dia0.filter(o=>o.co&&o.mb).map(o=>o.mb));
  const emEntrega=new Set(Object.entries(vg).filter(([,vs])=>vs.some(v=>!v.fim)).map(([mb])=>mb));
  const nAt=ativosMb.size,nEnt=[...emEntrega].filter(m=>ativosMb.has(m)).length;
- $('placar').innerHTML=`<div><span>Entregadores ativos hoje</span><b>${nAt}</b></div><div class="rota"><span>Em entrega</span><b>${nEnt}</b></div><div class="loja"><span>Aguardo / retorno à base</span><b>${nAt-nEnt}</b></div>`;
+ const todasVg=Object.values(vg).flat(),vFeitas=todasVg.filter(v=>v.fim).length,vAnd=todasVg.length-vFeitas;
+ $('placar').innerHTML=`<div><span>Entregadores ativos hoje</span><b>${nAt}</b></div><div class="rota"><span>Em entrega</span><b>${nEnt}</b></div><div class="loja"><span>Aguardo / retorno à base</span><b>${nAt-nEnt}</b></div><div class="via"><span>Viagens hoje<small>${vAnd?`+${vAnd} em andamento`:'concluídas'}</small></span><b>${vFeitas}</b></div>`;
+ // metas do dia
+ const dsem=new Date(hoje+'T12:00:00').getDay(),mHoje=METAS.find(m=>m.dia_semana===dsem)||{};
+ const vendas=dia0.reduce((a,o)=>a+(o.val||0),0),mv=+mHoje.meta_vendas||0,mt=+mHoje.meta_viagens||0;
+ const barra=(rot,txt,at,me)=>{const pc=Math.min(100,at/me*100);return `<div class="alvo ${at>=me?'ok':''}"><div class="l"><span>${rot}</span><span><b>${txt}</b> ${at>=me?'· meta batida!':'· '+Math.round(pc)+'%'}</span></div><div class="tr"><i style="width:${pc.toFixed(1)}%"></i></div></div>`};
+ $('metasbar').innerHTML=(mv?barra('Vendas do dia',`${brl(vendas)} / ${brl(mv)}`,vendas,mv):'')+(mt?barra('Viagens do dia',`${vFeitas} / ${mt}`,vFeitas,mt):'');
+ $('metasbar').hidden=!(mv||mt);
+ checarMeta('vendas',vendas,mv,'META DE VENDAS BATIDA!',`${brl(vendas)} vendidos hoje`);
+ checarMeta('viagens',vFeitas,mt,'META DE VIAGENS BATIDA!',`${vFeitas} viagens concluídas hoje`);
  const ok=ultimoColetor&&ultimoColetor.ultimo_sucesso,idade=ok?now-ms(ultimoColetor.ultimo_sucesso):null;
  const s=$('sync');if(!ok){s.textContent='Coletor sem dados';s.className='off'}
  else if(idade>120000){s.textContent=`Sem atualização da Foody há ${Math.round(idade/60000)} min`;s.className='off'}
@@ -201,7 +247,14 @@ async function iniciarLoja(){
  $('metas').textContent=`Metas: despacho ${LOJA.meta_despacho_min} min · espera ${LOJA.meta_espera_min} min · trânsito ${LOJA.meta_transito_min} min · total ${LOJA.meta_total_min} min`;
  await carregar();assinar();render();
 }
+$('logo').innerHTML=Painel.SIMBOLO;
 $('b_sair').onclick=()=>Painel.sair();
+const somBtn=()=>{$('b_som').textContent='Som: '+(somOn?'ligado':'desligado');$('b_som').setAttribute('aria-pressed',somOn)};somBtn();
+$('b_som').onclick=()=>{somOn=!somOn;try{localStorage.setItem('foody_som',somOn?'1':'0')}catch(_){}somBtn();if(somOn){ctx();const a=AC;if(a){nota(784,a.currentTime+.02,.18);nota(1046.5,a.currentTime+.16,.3)}}};
+// navegadores só liberam áudio após um toque/clique na página: o primeiro clique em qualquer lugar destrava
+document.addEventListener('click',()=>{if(somOn)ctx()},{once:true});
+$('festa').onclick=()=>{$('festa').hidden=true};
+window.testarFesta=()=>festa('META DE VENDAS BATIDA!','Teste da comemoração');
 $('b_tela').onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}catch(_){}};
 $('f_loja').onchange=()=>{LOJA=LOJAS.find(l=>l.id===$('f_loja').value);Painel.guardarLoja(LOJA.id);iniciarLoja()};
 Painel.exigirLogin('Painel ao vivo').then(async()=>{
@@ -210,6 +263,7 @@ Painel.exigirLogin('Painel ao vivo').then(async()=>{
  LOJA=Painel.lojaPreferida(LOJAS);
  $('f_loja').innerHTML=LOJAS.map(l=>`<option value="${esc(l.id)}">${esc(l.nome)}</option>`).join('');$('f_loja').value=LOJA.id;$('f_loja').hidden=LOJAS.length<2;
  await iniciarLoja();
+ if(location.hash==='#teste-festa')setTimeout(()=>festa('META DE VENDAS BATIDA!','Teste da comemoração'),800);
  setInterval(render,1000);
  setInterval(()=>carregar().catch(()=>{}),60000); // rede de segurança caso o tempo real caia
 }).catch(e=>{$('sync').textContent='Erro: '+(e.message||e);$('sync').className='off'});

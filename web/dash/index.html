@@ -1,20 +1,20 @@
 <!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard de entregas</title>
-<link href="https://fonts.googleapis.com/css2?family=Sofia+Sans+Condensed:wght@700;800&family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet">
 <style>
 /* VOICE: mesa de gráficos de jornal aplicada à operação; o achado vira título
    IDEA: relatório operacional mensal de uma loja de delivery
    PICTURE: a barra de volume diário em vermelhão, sangrando a largura; abaixo, onde o tempo vai
-   COLOUR+TYPE: branco, preto, vermelhão #ff4a1c como massa única; etapas em azul/água/violeta validados; Sofia Sans Condensed + Instrument Sans
+   COLOUR+TYPE: marca Dobra — creme, roxo #3c193f e laranja #fe7237 como massa única; etapas em azul/água/violeta validados; Sofia Sans Condensed + Instrument Sans
    LAYOUT: título-achado, filtros numa linha, indicadores, gráficos em pares, ranking, qualidade, método */
-:root{color-scheme:light dark;--bg:light-dark(#ffffff,#120d0b);--ink:light-dark(#141414,#f2eeec);--mute:light-dark(#5f5f5f,#a59c98);--line:light-dark(#e4e1df,#2e2623);
---soft:light-dark(#f6f4f2,#1c1613);--ver:light-dark(#ff4a1c,#ff6a43);--s1:light-dark(#257de0,#338ced);--s2:light-dark(#00b894,#00a888);--s3:light-dark(#6a4ce2,#9887ef);
+:root{color-scheme:light dark;--bg:light-dark(#fffdf9,#1b0d20);--ink:light-dark(#3c193f,#fcf7ef);--mute:light-dark(#6e5872,#bba5bf);--line:light-dark(#eadfd3,#40264a);
+--soft:light-dark(#f8efe4,#2a1530);--ver:light-dark(#fe7237,#fe7237);--dobra-roxo:light-dark(#421f4a,#fcf7ef);--dobra-ink:light-dark(#421f4a,#fcf7ef);--s1:light-dark(#257de0,#338ced);--s2:light-dark(#00b894,#00a888);--s3:light-dark(#6a4ce2,#9887ef);
 --good:#0aac23;--warn:#fbb315;--crit:#dc3c3d}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Instrument Sans",system-ui,sans-serif;overflow-x:clip}
-h1,h2,.big{font-family:"Sofia Sans Condensed",sans-serif;font-weight:800;line-height:1.05;text-wrap:balance;margin:0}
+h1,h2,.big{font-family:"Outfit",sans-serif;font-weight:800;line-height:1.05;text-wrap:balance;margin:0}
 h1{font-size:clamp(32px,4.4vw,52px);max-width:22ch}h2{font-size:clamp(22px,2.4vw,30px)}
 .band{padding:clamp(22px,3.2vw,48px) max(5vw,16px)}.wrap{max-width:1240px;margin:0 auto}
 .lede{color:var(--mute);max-width:70ch;margin:12px 0 0}
@@ -24,9 +24,9 @@ select,input,button{font:inherit;font-size:16px;color:var(--ink);background:var(
 button{cursor:pointer}button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 :focus-visible{outline:2px solid var(--ver);outline-offset:2px}
 .seg{display:flex;gap:6px;flex-wrap:wrap}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));border-top:2px solid var(--ink);margin-top:26px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));border-top:2px solid var(--ink);margin-top:26px}
 .kpi{padding:14px 14px 16px 0;border-bottom:1px solid var(--line)}.kpi small{color:var(--mute);font-size:13px;display:block}
-.kpi .big{font-size:clamp(32px,3.6vw,44px);white-space:nowrap}.kpi .big u{text-decoration:none;font-size:.5em;margin-inline-start:3px;color:var(--mute)}.kpi .sub{font-size:13px;color:var(--mute)}
+.kpi .big{font-size:clamp(28px,3.1vw,40px);white-space:nowrap}.kpi .big u{text-decoration:none;font-size:.5em;margin-inline-start:3px;color:var(--mute)}.kpi .sub{font-size:13px;color:var(--mute)}
 .hero{background:var(--soft)}
 .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 40px}
 .chart h2{margin-bottom:4px}.chart p{color:var(--mute);margin:0 0 10px;font-size:15px}

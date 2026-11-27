@@ -58,17 +58,18 @@ Deno.serve(async (req) => {
   try {
     switch (b.acao) {
       case "listar": {
-        const [cli, cred, lojas, acessos, est] = await Promise.all([
+        const [cli, cred, lojas, acessos, est, metas] = await Promise.all([
           svc.from("clientes").select("*").order("nome"),
           svc.from("credenciais_foody").select("id,cliente_id,nome,ativa,token_definido,token_definido_em,ultimo_sucesso,ultimo_erro,total_429"),
           svc.from("lojas").select("*").order("nome"),
           svc.from("acessos").select("user_id,cliente_id,loja_id,papel,criado_em"),
           svc.from("coletor_estado").select("loja_id,ultimo_sucesso,ultimo_erro"),
+          svc.from("metas_semana").select("*"),
         ]);
         const { data: us } = await svc.auth.admin.listUsers({ perPage: 1000 });
         const email = new Map((us?.users || []).map((x) => [x.id, x.email]));
         return json({
-          clientes: cli.data, credenciais: cred.data, lojas: lojas.data, estado: est.data,
+          clientes: cli.data, credenciais: cred.data, lojas: lojas.data, estado: est.data, metas: metas.data,
           acessos: (acessos.data || []).map((a) => ({ ...a, email: email.get(a.user_id) || "?" })),
         });
       }
@@ -106,6 +107,24 @@ Deno.serve(async (req) => {
         const { data, error } = await svc.from("lojas").insert({ ...campos, nome: b.nome.trim(), cliente_id: b.cliente_id, credencial_id: credId }).select().single();
         if (error) return json({ erro: error.message }, 400);
         return json({ loja: data });
+      }
+
+      case "sugerir_metas": {
+        const { data, error } = await svc.rpc("sugestao_metas", { p_loja: b.loja_id, p_semanas: b.semanas || 8 });
+        if (error) return json({ erro: error.message }, 400);
+        return json({ historico: data });
+      }
+
+      case "salvar_metas": {
+        if (!b.loja_id || !Array.isArray(b.metas)) return json({ erro: "unidade e metas obrigatórias" }, 400);
+        const linhas = b.metas.filter((m: any) => m.dia_semana >= 0 && m.dia_semana <= 6).map((m: any) => ({
+          loja_id: b.loja_id, dia_semana: m.dia_semana, atualizado_em: new Date().toISOString(),
+          meta_vendas: m.meta_vendas === "" || m.meta_vendas == null ? null : +m.meta_vendas,
+          meta_viagens: m.meta_viagens === "" || m.meta_viagens == null ? null : +m.meta_viagens,
+        }));
+        const { error } = await svc.from("metas_semana").upsert(linhas, { onConflict: "loja_id,dia_semana" });
+        if (error) return json({ erro: error.message }, 400);
+        return json({ ok: true });
       }
 
       case "testar_token": {

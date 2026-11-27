@@ -1,26 +1,26 @@
 <!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Configurações do painel</title>
-<link href="https://fonts.googleapis.com/css2?family=Sofia+Sans+Condensed:wght@700;800&family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet">
 <style>
 /* VOICE: ferramenta de administração, calma e direta
    IDEA: ficha cadastral — cliente, unidades e quem acessa
    PICTURE: a própria lista de unidades com o estado do coletor
    COLOUR+TYPE: branco/preto com vermelhão só para ação principal; Sofia Sans Condensed + Instrument Sans
    LAYOUT: uma coluna; clientes com suas unidades; acessos embaixo */
-:root{color-scheme:light dark;--bg:light-dark(#fff,#120d0b);--ink:light-dark(#141414,#f2eeec);--mute:light-dark(#5f5f5f,#a59c98);--line:light-dark(#e4e1df,#2e2623);
---soft:light-dark(#f6f4f2,#1c1613);--ver:light-dark(#ff4a1c,#ff6a43);--good:#0aac23;--crit:#dc3c3d}
+:root{color-scheme:light dark;--bg:light-dark(#fffdf9,#1b0d20);--ink:light-dark(#3c193f,#fcf7ef);--mute:light-dark(#6e5872,#bba5bf);--line:light-dark(#eadfd3,#40264a);
+--soft:light-dark(#f8efe4,#2a1530);--ver:light-dark(#fe7237,#fe7237);--dobra-roxo:light-dark(#421f4a,#fcf7ef);--dobra-ink:light-dark(#421f4a,#fcf7ef);--good:#0aac23;--crit:#dc3c3d}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Instrument Sans",system-ui,sans-serif;overflow-x:clip}
-h1,h2{font-family:"Sofia Sans Condensed",sans-serif;font-weight:800;line-height:1.05;margin:0}
+h1,h2{font-family:"Outfit",sans-serif;font-weight:800;line-height:1.05;margin:0}
 h1{font-size:clamp(32px,4vw,46px)}h2{font-size:26px}
 .wrap{max-width:1100px;margin:0 auto;padding:clamp(22px,3vw,44px) max(4vw,16px)}
 .top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:8px}
 .lede{color:var(--mute);margin:6px 0 24px;max-width:70ch}
 button,select,input{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;min-height:44px;padding:0 12px}
-button{cursor:pointer}button.pri{background:var(--ver);border-color:var(--ver);color:#fff;font-weight:600}
-button.lnk{border:0;background:none;color:var(--ver);padding:0 6px;min-height:36px}
+button{cursor:pointer}button.pri{background:var(--ver);border-color:var(--ver);color:#2a0f2e;font-weight:700}
+button.lnk{border:0;background:none;color:var(--ink);text-decoration:underline;text-decoration-color:var(--ver);text-underline-offset:3px;padding:0 6px;min-height:36px}
 :focus-visible{outline:2px solid var(--ver);outline-offset:2px}
 .cli{border-top:2px solid var(--ink);padding:16px 0 26px}
 .cli .hd{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;justify-content:space-between;margin-bottom:10px}
@@ -68,6 +68,13 @@ form.f .acts{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;marg
  <label>Situação<select name="ativa"><option value="true">Ativa</option><option value="false">Pausada</option></select></label>
  <div class="msg"></div><div class="acts"><button type="button" data-fechar>Cancelar</button><button class="pri">Salvar</button></div></form></dialog>
 
+<dialog id="d_metas" style="width:min(760px,96vw)"><form class="f" id="f_metas"><h2 class="full" id="t_metas">Metas da semana</h2>
+ <p class="full sm">A comemoração no painel dispara quando a meta do dia é batida. Deixe em branco para não ter meta naquele dia. A sugestão usa as últimas <select name="semanas" style="min-height:32px;padding:0 6px"><option value="4">4</option><option value="8" selected>8</option><option value="12">12</option></select> semanas de cada dia da semana.</p>
+ <div class="full scroll"><table><thead><tr><th>Dia</th><th>Vendas (R$)</th><th>Viagens</th><th>Histórico (média · dia bom)</th></tr></thead><tbody id="tb_metas"></tbody></table></div>
+ <div class="full" style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" id="b_sug_media">Sugerir: média + 10%</button><button type="button" id="b_sug_bom">Sugerir: dia bom</button></div>
+ <p class="full sm">"Dia bom" é o valor superado em 1 de cada 4 dias daquele dia da semana: meta desafiadora. "Média + 10%" é alcançável na maioria das semanas boas.</p>
+ <div class="msg"></div><div class="acts"><button type="button" data-fechar>Cancelar</button><button class="pri">Salvar metas</button></div></form></dialog>
+
 <dialog id="d_tok"><form class="f" id="f_tok"><h2 class="full">Trocar token</h2>
  <input type="hidden" name="credencial_id"><p class="full sm" id="t_tok"></p>
  <label class="full">Novo token Foody<input name="token" type="password" autocomplete="off" required></label>
@@ -101,10 +108,11 @@ async function carregar(){
    const tok=cr.token_definido?`<span class="ok">✓ definido</span><div class="sm">${quando(cr.token_definido_em)}</div>`:'<span class="no">✕ falta o token</span>';
    const col=!l.ativa?'<span class="sm">pausada</span>':e.ultimo_erro?`<span class="no">✕ erro</span><div class="sm">${esc(e.ultimo_erro)}</div>`:e.ultimo_sucesso?`<span class="ok">✓ ok</span><div class="sm">${quando(e.ultimo_sucesso)}</div>`:'<span class="sm">aguardando 1º ciclo</span>';
    return `<tr><td><b>${esc(l.nome)}</b></td><td>${tok}</td><td>${col}</td><td>${l.meta_despacho_min} · ${l.meta_espera_min} · ${l.meta_transito_min} · ${l.meta_total_min} min</td>
-   <td style="white-space:nowrap"><button class="lnk" data-ed="${esc(l.id)}">Editar</button><button class="lnk" data-tk="${esc(l.id)}">${cr.token_definido?'Trocar token':'Definir token'}</button></td></tr>`}).join('')}
+   <td style="white-space:nowrap"><button class="lnk" data-ed="${esc(l.id)}">Editar</button><button class="lnk" data-mt="${esc(l.id)}">Metas</button><button class="lnk" data-tk="${esc(l.id)}">${cr.token_definido?'Trocar token':'Definir token'}</button></td></tr>`}).join('')}
   </tbody></table></div>`:'<p class="empty">Nenhuma unidade ainda.</p>'}</section>`}).join('')||'<p class="empty">Nenhum cliente cadastrado.</p>';
  document.querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>abrirLoja(D.lojas.find(l=>l.id===b.dataset.ed)));
  document.querySelectorAll('[data-tk]').forEach(b=>b.onclick=()=>abrirToken(D.lojas.find(l=>l.id===b.dataset.tk)));
+ document.querySelectorAll('[data-mt]').forEach(b=>b.onclick=()=>abrirMetas(D.lojas.find(l=>l.id===b.dataset.mt)));
  const nomeCli=id=>(D.clientes.find(c=>c.id===id)||{}).nome||'?',nomeLoja=id=>{const l=D.lojas.find(x=>x.id===id);return l?`${nomeCli(l.cliente_id)} · ${l.nome}`:'?'};
  $('acessos').innerHTML=(D.acessos||[]).map(a=>`<tr><td>${esc(a.email)}</td><td>${a.loja_id?esc(nomeLoja(a.loja_id)):a.cliente_id?'Todas as unidades de '+esc(nomeCli(a.cliente_id)):'<b>Tudo (administrador)</b>'}</td>
   <td><button class="lnk" data-rm='${esc(JSON.stringify({user_id:a.user_id,cliente_id:a.cliente_id,loja_id:a.loja_id}))}'>Remover</button></td></tr>`).join('')||'<tr><td colspan="3" class="empty">Nenhum acesso.</td></tr>';
@@ -117,11 +125,35 @@ async function carregar(){
 function abrirLoja(l){const f=$('f_loja');f.reset();msg(f,'');
  $('t_loja').textContent=l?'Editar unidade':'Nova unidade';$('w_cli').hidden=!!l;$('w_tok').hidden=!!l;
  f.id.value=l?l.id:'';
- if(l)['nome','meta_despacho_min','meta_espera_min','meta_transito_min','meta_total_min','limite_cozinha_min','limite_espera_min','limite_rota_min','teto_viagem_min'].forEach(k=>f[k].value=l[k]);
+ if(l)['nome','meta_despacho_min','meta_espera_min','meta_transito_min','meta_total_min','limite_cozinha_min','limite_espera_min','limite_rota_min','teto_viagem_min'].forEach(k=>f[k].value=l[k]??'');
  f.ativa.value=l?String(l.ativa):'true';
  if(!D.clientes.length)msg(f,'Cadastre um cliente primeiro.','err');
  $('d_loja').showModal()}
 function abrirToken(l){const f=$('f_tok');f.reset();msg(f,'');f.credencial_id.value=l.credencial_id;$('t_tok').textContent=`Unidade: ${l.nome}. O token novo substitui o atual assim que a Foody aceitar.`;$('d_tok').showModal()}
+
+const DIAS=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'],ORD=[1,2,3,4,5,6,0];
+let HIST=[],LM=null;
+const fmtR=v=>v==null?'–':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+async function carregarHist(){const f=$('f_metas');msg(f,'Analisando o histórico…');
+ try{HIST=(await Painel.admin('sugerir_metas',{loja_id:LM.id,semanas:+f.semanas.value})).historico||[];msg(f,HIST.length?'':'Sem histórico suficiente para sugerir.');}catch(x){msg(f,x.message,'err');HIST=[]}
+ ORD.forEach(d=>{const h=HIST.find(x=>x.dia_semana===d),td=document.getElementById('h_'+d);
+  td.textContent=h?`${fmtR(h.vendas_media)} · ${fmtR(h.vendas_p75)} | ${h.viagens_media} · ${h.viagens_p75} viagens (${h.dias} dias)`:'sem dados'})}
+async function abrirMetas(l){LM=l;const f=$('f_metas');msg(f,'');$('t_metas').textContent='Metas da semana · '+l.nome;
+ const atuais=(D.metas||[]).filter(m=>m.loja_id===l.id);
+ $('tb_metas').innerHTML=ORD.map(d=>{const m=atuais.find(x=>x.dia_semana===d)||{};
+  return `<tr><td><b>${DIAS[d]}</b></td><td><input name="v_${d}" type="number" min="0" step="100" value="${m.meta_vendas??''}" style="width:130px"></td>
+  <td><input name="t_${d}" type="number" min="0" value="${m.meta_viagens??''}" style="width:90px"></td><td class="sm" id="h_${d}">…</td></tr>`}).join('');
+ $('d_metas').showModal();await carregarHist()}
+const sugerir=modo=>{const f=$('f_metas');if(!HIST.length){msg(f,'Sem histórico para sugerir.','err');return}
+ ORD.forEach(d=>{const h=HIST.find(x=>x.dia_semana===d);if(!h)return;
+  const v=modo==='media'?h.vendas_media*1.1:h.vendas_p75,t=modo==='media'?h.viagens_media*1.1:h.viagens_p75;
+  f['v_'+d].value=Math.round(v/100)*100;f['t_'+d].value=Math.round(t)});
+ msg(f,'Sugestão aplicada. Revise e salve.','ok')};
+$('b_sug_media').onclick=()=>sugerir('media');$('b_sug_bom').onclick=()=>sugerir('bom');
+$('f_metas').semanas.onchange=carregarHist;
+$('f_metas').onsubmit=async e=>{e.preventDefault();const f=e.target;msg(f,'Salvando…');
+ const metas=[0,1,2,3,4,5,6].map(d=>({dia_semana:d,meta_vendas:f['v_'+d].value,meta_viagens:f['t_'+d].value}));
+ try{await Painel.admin('salvar_metas',{loja_id:LM.id,metas});$('d_metas').close();await carregar()}catch(x){msg(f,x.message,'err')}};
 
 $('b_cli').onclick=()=>{$('f_cli').reset();msg($('f_cli'),'');$('d_cli').showModal()};
 $('b_loja').onclick=()=>abrirLoja(null);

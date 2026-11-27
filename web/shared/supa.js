@@ -5,6 +5,22 @@
   const KEY = "sb_publishable_RXTp2PLdnSSF7T3MkThYIQ_IvBUVN3G";
   const sb = window.supabase.createClient(URL, KEY, { auth: { persistSession: true, autoRefreshToken: true } });
 
+
+  // ---------- Marca Dobra ----------
+  const SIMBOLO = `<svg viewBox="310 300 310 285" aria-hidden="true" focusable="false"><path fill="#fe7237" d="M421,381V330q0,-23,23,-23H590q23,0,23,23V467H506V381Z"/><path fill="currentColor" d="M353,397H490V579H353q-37,0,-37,-37V434q0,-37,37,-37Z"/><path fill="currentColor" d="M506,483H613V552q0,27,-27,27H506Z"/></svg>`;
+  function selo() {
+    if (document.querySelector(".dobra-selo")) return;
+    const st = document.createElement("style");
+    st.textContent = `.dobra-selo{display:flex;justify-content:flex-end;align-items:center;gap:7px;font:500 12px/1 system-ui,sans-serif;
+      color:var(--dobra-ink,#421f4a);opacity:.6;padding:10px max(2vw,16px) 14px}
+      .dobra-selo svg{width:18px;height:17px;color:var(--dobra-roxo,#421f4a)}.dobra-selo b{font-weight:700}`;
+    document.head.appendChild(st);
+    const a = document.createElement("div");
+    a.className = "dobra-selo"; a.title = "Este é um produto desenvolvido por Dobra SaaS";
+    a.innerHTML = SIMBOLO + "<span>Um produto <b>Dobra SaaS</b></span>";
+    document.body.appendChild(a);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", selo); else selo();
   const css = `
   .lg-wrap{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:20px;background:var(--bg,#fff);color:var(--ink,#141414)}
   .lg-box{width:min(380px,100%);display:flex;flex-direction:column;gap:12px}
@@ -14,6 +30,8 @@
   .lg-box input{font:inherit;font-size:16px;min-height:46px;padding:0 12px;border-radius:8px;border:1px solid var(--line,#ccc);background:transparent;color:inherit}
   .lg-box button{font:inherit;font-size:16px;min-height:46px;border-radius:8px;border:0;background:var(--ink,#141414);color:var(--bg,#fff);cursor:pointer;font-weight:600}
   .lg-err{color:#dc3c3d;font-size:14px;min-height:1.2em}
+  .lg-marca{display:flex;align-items:center;gap:10px;margin-bottom:18px;color:var(--dobra-roxo,#421f4a);font:700 26px/1 "Outfit","Instrument Sans",system-ui,sans-serif}
+  .lg-marca svg{width:38px;height:35px}
   .lg-box .lg-esq{background:none;color:inherit;border:1px solid var(--line,#ccc);font-weight:400}
   .lg-err.ok{color:#0aac23}`;
 
@@ -21,7 +39,7 @@
     return new Promise((resolve) => {
       const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
       const w = document.createElement("div"); w.className = "lg-wrap";
-      w.innerHTML = `<form class="lg-box"><h1></h1><p>Entre com o e-mail e a senha do seu acesso.</p>
+      w.innerHTML = `<form class="lg-box"><div class="lg-marca">${SIMBOLO}<span>Dobra</span></div><h1></h1><p>Entre com o e-mail e a senha do seu acesso.</p>
         <label>E-mail<input type="email" name="e" autocomplete="username" required></label>
         <label>Senha<input type="password" name="s" autocomplete="current-password" required></label>
         <button type="submit">Entrar</button>
@@ -96,5 +114,5 @@
     return sp.toISOString().slice(0, 10);
   }
 
-  window.Painel = { sb, exigirLogin, lojas, lojaPreferida, guardarLoja, tudo, sair, diaOperacional, admin };
+  window.Painel = { SIMBOLO, sb, exigirLogin, lojas, lojaPreferida, guardarLoja, tudo, sair, diaOperacional, admin };
 })();
