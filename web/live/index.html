@@ -37,6 +37,8 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--warn);outline-
 .tag.late{background:var(--bad);color:#fff}.tag.sus{background:#3c193f;color:#fcf7ef}.tag.ok{background:#cdeedb;color:#11643a}
 .bar{height:6px;background:#eadccd;border-radius:3px;margin-top:6px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ok)}
 .card.warn .bar i{background:var(--warn)}.card.bad .bar i,.card.late .bar i{background:var(--bad)}
+.card.mbc{border-color:var(--mute)}.card.mbc.ok{border-color:var(--ok)}.card.mbc.vez{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc)}.card.mbc.pausa{opacity:.55}
+.card .nm{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:26px;line-height:1.05;overflow-wrap:anywhere}
 .empty{color:var(--mute);text-align:center;padding:20px 0;font-size:14px}
 .riders{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;padding:0 max(2vw,14px) 14px}
 .rider{background:var(--panel);border-radius:10px;padding:10px 12px;border-top:4px solid var(--mute)}
@@ -180,9 +182,15 @@ function grupo(g,stage,now){
  return `<article class="card ${lvl(el,lim)} ${late?'late':''}"><div class="top"><span class="id num">${ids}</span><span class="t num">${mm(el)}</span></div>
  <div class="meta"><span><b>${esc(g.mb||'sem motoboy')}</b></span><span class="tag">${ps.length} ${ps.length>1?'entregas':'entrega'}</span>${pz?`<span class="tag">${pzTxt(pz)}</span>`:''}${stage==='rota'&&rest.length<ps.length?`<span class="tag">faltam ${rest.length}</span>`:''}<span>${label}</span>${late?`<span class="tag late">ATRASADO +${mm(atr)}</span>`:''}</div>
  <div class="bar"><i style="width:${pct.toFixed(0)}%"></i></div></article>`}
-function feito(o){const tot=o.en-o.ab,late=o.due&&o.en>o.due,cls=late?'bad':tot>M.tot?'warn':'',imed=o.co&&o.en-o.co<120000;
- return `<article class="card ${cls}"><div class="top"><span class="id num">#${esc(o.id)}</span><span class="t num">${mm(tot)}</span></div>
- <div class="meta"><span>${esc(o.mb)}</span><span>entregue ${hh(o.en)}</span>${late?`<span class="tag late">+${mm(o.en-o.due)} atraso</span>`:`<span class="tag ok">no prazo</span>`}${imed?'<span class="tag sus">baixa imediata</span>':''}</div></article>`}
+// card do motoboy na 4ª coluna: voltando para a loja ou já na loja (check-in)
+function cardMb(m,now){
+ const cls=m.pos===1?'vez':m.pos?'ok':m.pausa?'pausa':'';
+ const tempo=m.pos?now-m.chegou:now-m.last;
+ const st=m.pos?`<span class="tag ${m.pos===1?'late':'ok'}">${m.pos===1?'da vez':m.pos+'º da fila'}</span><span>na loja há ${mm(now-m.chegou)}</span>`
+  :m.pausa?`<span>sem viagem há ${mm(now-m.last)} · pausa?</span>`:`<span>voltando · entregou ${hh(m.last)}</span>`;
+ const sai=m.sai.length?`<span class="tag">saindo: ${m.sai.length} ${m.sai.length>1?'pedidos':'pedido'}</span>`:'';
+ return `<article class="card mbc ${cls}"><div class="top"><span class="id nm">${esc(m.mb)}</span><span class="t num">${mm(tempo)}</span></div>
+ <div class="meta">${st}${sai}<span>${m.n} ${m.n===1?'entrega':'entregas'} hoje</span></div></article>`}
 
 function renderFila(){
  const el=$('fila'),now=Date.now(),k=s=>String(s||'').trim().toLowerCase();
@@ -211,7 +219,7 @@ function render(){
  const coz=dia.filter(o=>!o.de&&!o.en).sort((a,b)=>a.ab-b.ab),
   esp=dia.filter(o=>o.de&&!o.co&&!o.en).sort((a,b)=>a.de-b.de),
   rota=dia.filter(o=>o.co&&!o.en).sort((a,b)=>a.co-b.co),
-  ent=dia.filter(o=>o.en),rec=ent.filter(o=>now-o.en<30*60000).sort((a,b)=>b.en-a.en);
+  ent=dia.filter(o=>o.en);
  const gRota=Object.entries(vg).flatMap(([mb,vs])=>vs.filter(v=>v.ps.some(o=>!o.en)).map(v=>({mb,sa:v.sa,ps:[...v.ps].sort((a,b)=>(a.en||9e15)-(b.en||9e15))}))).sort((a,b)=>a.sa-b.sa);
  const porMb={};esp.forEach(o=>{const k=o.mb||('_'+o.uid);(porMb[k]||(porMb[k]={mb:o.mb,ps:[]})).ps.push(o)});
  const gEsp=Object.values(porMb).sort((a,b)=>Math.min(...a.ps.map(o=>o.de))-Math.min(...b.ps.map(o=>o.de)));
@@ -229,7 +237,16 @@ function render(){
   [`Dentro da meta ${M.tot/60000} min`,ent.length?Math.round(naMeta/ent.length*100)+'%':'–','']];
  $('kpis').innerHTML=K.map(([l,v,c])=>`<div class="kpi ${c}"><small>${l}</small><div class="num">${v}</div></div>`).join('');
  const col=(t,list,html,nPed)=>`<section class="col"><h2>${t}<span class="num">${list.length}${nPed!=null&&nPed!==list.length?`<small style="font-size:15px;font-weight:500;color:var(--mute)"> · ${nPed} ped.</small>`:''}</span></h2>${list.length?list.map(html).join(''):'<div class="empty">Nenhum pedido</div>'}</section>`;
- $('board').innerHTML=col('Na cozinha',coz,o=>card(o,'coz',now))+col('Aguardando saída',gEsp,g=>grupo(g,'esp',now),esp.length)+col('Em rota',gRota,g=>grupo(g,'rota',now),rota.length)+col('Entregues · 30 min',rec,feito);
+ // 4ª coluna: motoboys que não estão em rota — na loja (check-in, na ordem da fila) e voltando (pela hora da última entrega)
+ const k=x=>String(x||'').trim().toLowerCase(),posFila=new Map(FILA.map((f,i)=>[k(f.entregador),[i+1,ms(f.chegou_em)]]));
+ const livres=Object.entries(vg).filter(([,vs])=>vs.length&&vs.every(v=>v.fim)).map(([mb,vs])=>{
+  const last=Math.max(...vs.map(v=>v.fim)),f=posFila.get(k(mb))||[];
+  return {mb,last,pos:f[0]||0,chegou:f[1]||null,pausa:!f[0]&&now-last>3600000,n:vs.flatMap(v=>v.ps).filter(o=>o.en).length,sai:esp.filter(o=>k(o.mb)===k(mb))}});
+ FILA.forEach((f,i)=>{if(!livres.some(m=>k(m.mb)===k(f.entregador))&&!Object.entries(vg).some(([mb,vs])=>k(mb)===k(f.entregador)&&vs.some(v=>!v.fim)))
+  livres.push({mb:f.entregador,last:ms(f.chegou_em),pos:i+1,chegou:ms(f.chegou_em),pausa:false,n:0,sai:esp.filter(o=>k(o.mb)===k(f.entregador))})});
+ livres.sort((a,b)=>(a.pos||99)-(b.pos||99)||(a.pausa-b.pausa)||a.last-b.last);
+ const colMb=`<section class="col"><h2>Retorno / na loja<span class="num">${livres.filter(m=>!m.pausa).length}</span></h2>${livres.length?livres.map(m=>cardMb(m,now)).join(''):'<div class="empty">Nenhum motoboy voltando</div>'}</section>`;
+ $('board').innerHTML=col('Na cozinha',coz,o=>card(o,'coz',now))+col('Aguardando saída',gEsp,g=>grupo(g,'esp',now),esp.length)+col('Em rota',gRota,g=>grupo(g,'rota',now),rota.length)+colMb;
  const nomes=[...new Set([...Object.keys(vg),...esp.map(o=>o.mb).filter(Boolean)])];
  $('riders').innerHTML=nomes.map(mb=>{const vs=vg[mb]||[];
   const em=vs.find(v=>!v.fim);let ativo=0,last=null;
