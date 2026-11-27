@@ -1,0 +1,8 @@
+// Publicação na Cloudflare (Worker só com arquivos estáticos): serve a pasta web/
+{
+  "name": "foody-delivery-dash-live",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./web"
+  }
+}
