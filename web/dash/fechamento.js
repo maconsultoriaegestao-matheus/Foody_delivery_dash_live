@@ -243,15 +243,38 @@ function txtFaixas(fx) {
     return `${t}: <b>${R$(x.valor)}</b>`;
   }).join(" · ");
 }
-function txtRegra(r) {
-  return `Diária <b>${R$(r.diaria)}</b> · distância: ${r.base_km === "raio" ? "raio (linha reta)" : "km de rota estimado"}${r.minimo_dia != null ? ` · mínimo <b>${R$(r.minimo_dia)}</b>/dia` : ""}<br>${txtFaixas(r.faixas)}`;
+const DSEM = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"], ORDEM = [1, 2, 3, 4, 5, 6, 0];
+function txtSemana(r) {
+  const ds = r.diaria_semana || [], ms = r.minimo_semana || [];
+  const it = ORDEM.filter((d) => ds[d] != null || ms[d] != null)
+    .map((d) => `${DSEM[d]}: ${[ds[d] != null ? `diária <b>${R$(ds[d])}</b>` : "", ms[d] != null ? `mínimo <b>${R$(ms[d])}</b>` : ""].filter(Boolean).join(", ")}`);
+  return it.length ? `<br><span class="sm">Por dia da semana:</span> ${it.join(" · ")}` : "";
 }
+function txtRegra(r) {
+  return `Diária <b>${R$(r.diaria)}</b> · distância: ${r.base_km === "raio" ? "raio (linha reta)" : "km de rota estimado"}${r.minimo_dia != null ? ` · mínimo <b>${R$(r.minimo_dia)}</b>/dia` : ""}${txtSemana(r)}<br>${txtFaixas(r.faixas)}`;
+}
+function linhasSemana(base) {
+  const ds = (base && base.diaria_semana) || [], ms = (base && base.minimo_semana) || [];
+  $("rg_sem").innerHTML = ORDEM.map((d) => `<tr><td>${DSEM[d]}</td>
+    <td><input type="number" min="0" step="0.01" name="d_${d}" value="${ds[d] ?? ""}"></td>
+    <td><input type="number" min="0" step="0.01" name="m_${d}" value="${ms[d] ?? ""}"></td></tr>`).join("");
+  $("rg_semana").open = ORDEM.some((d) => ds[d] != null || ms[d] != null);
+  phSemana();
+}
+// o padrão aparece como dica nos campos vazios
+function phSemana() {
+  const f = $("f_regra");
+  ORDEM.forEach((d) => { f[`d_${d}`].placeholder = f.diaria.value || "padrão"; f[`m_${d}`].placeholder = f.minimo_dia.value || "sem mínimo"; });
+}
+$("f_regra").diaria.addEventListener("input", phSemana);
+$("f_regra").minimo_dia.addEventListener("input", phSemana);
 function desenharRegras() {
   const ref = A.fim, atual = REGRAS.find((r) => r.vigente_desde <= ref) || null, fut = REGRAS.filter((r) => r.vigente_desde > ref);
-  $("rg_atual").innerHTML = atual ? `<div class="regra"><div class="sm">Vale desde ${brA(atual.vigente_desde)} (aplicada a este período)</div>${txtRegra(atual)}</div>`
+  $("rg_atual").innerHTML = atual ? `<div class="regra"><div class="sm">Vale desde ${brA(atual.vigente_desde)} (aplicada a este período) <button type="button" class="lnk" id="b_edrg">Editar esta regra</button></div>${txtRegra(atual)}</div>`
     : '<p class="aviso">Nenhuma regra vigente neste período.</p>';
   const outras = REGRAS.filter((r) => r !== atual);
   $("rg_hist").innerHTML = outras.length ? `<details style="margin-top:16px"><summary>Outras regras (${outras.length})</summary>${outras.map((r) => `<div class="regra"><div class="sm">${fut.includes(r) ? "Começa em" : "Valeu desde"} ${brA(r.vigente_desde)} <button type="button" class="lnk" data-rmrg="${r.id}">Excluir</button></div>${txtRegra(r)}</div>`).join("")}</details>` : "";
+  if ($("b_edrg")) $("b_edrg").onclick = () => abrirRegra(atual, atual.vigente_desde, "Editar regra de pagamento");
   $("rg_hist").querySelectorAll("[data-rmrg]").forEach((b) => (b.onclick = () => duasVezes(b, "Confirmar exclusão", async () => {
     const { error } = await sb().from("regras_pagamento").delete().eq("id", +b.dataset.rmrg);
     if (error) throw error; await carregar();
@@ -264,25 +287,29 @@ function linhaFx(ate, val) {
   $("rg_fx").appendChild(d);
 }
 $("b_addfx").onclick = () => linhaFx();
-$("b_regra").onclick = () => {
+function abrirRegra(base, data, titulo) {
   const f = $("f_regra"); f.reset(); msg(f, ""); $("rg_fx").innerHTML = "";
-  const base = REGRAS[0];
-  f.vigente_desde.value = A ? A.ini : hoje();
+  f.vigente_desde.value = data;
+  $("d_regra").querySelector("h2").textContent = titulo;
   if (base) {
     f.diaria.value = base.diaria; f.base_km.value = base.base_km; f.minimo_dia.value = base.minimo_dia ?? "";
     base.faixas.filter((x) => x.ate_km != null).forEach((x) => linhaFx(x.ate_km, x.valor));
     f.acima.value = (base.faixas.find((x) => x.ate_km == null) || {}).valor ?? "";
   } else [3, 5, 8].forEach((k) => linhaFx(k));
+  linhasSemana(base);
   $("d_regra").showModal();
-};
+}
+$("b_regra").onclick = () => abrirRegra(REGRAS[0], A ? A.ini : hoje(), "Nova regra de pagamento");
 $("f_regra").onsubmit = async (e) => {
   e.preventDefault(); const f = e.target;
   const fx = [...$("rg_fx").querySelectorAll(".fxr[data-f]")].map((d) => ({ ate_km: parseFloat(d.querySelector("[name=ate]").value), valor: parseFloat(d.querySelector("[name=val]").value) }));
   for (let i = 1; i < fx.length; i++) if (!(fx[i].ate_km > fx[i - 1].ate_km)) { msg(f, "As faixas precisam estar em ordem crescente de km, sem repetir.", "err"); return; }
   const faixas = [...fx, { ate_km: null, valor: parseFloat(f.acima.value) }];
   if (faixas.some((x) => !isFinite(x.valor) || x.valor < 0)) { msg(f, "Preencha todos os valores das faixas.", "err"); return; }
+  const arr = (p) => { const v = [0, 1, 2, 3, 4, 5, 6].map((d) => (f[`${p}_${d}`].value === "" ? null : +f[`${p}_${d}`].value)); return v.some((x) => x != null) ? v : null; };
   msg(f, "Salvando…");
   const { error } = await sb().from("regras_pagamento").upsert({
+    diaria_semana: arr("d"), minimo_semana: arr("m"),
     loja_id: L.id, vigente_desde: f.vigente_desde.value, diaria: +f.diaria.value, base_km: f.base_km.value,
     minimo_dia: f.minimo_dia.value === "" ? null : +f.minimo_dia.value, faixas,
   }, { onConflict: "loja_id,vigente_desde" });
