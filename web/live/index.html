@@ -10,7 +10,7 @@
    LAYOUT: barra de indicadores, 4 colunas de etapa, faixa de motoboys embaixo */
 :root{color-scheme:dark;--bg:#141619;--panel:#1d2024;--line:#2c3036;--ink:#eef0f2;--mute:#9aa1a9;--paper:#f3eee4;--dark:#1a1a1a;
 --ok:#2fbf71;--warn:#f2a516;--bad:#ef4b4b;--acc:#e8442e}
-*{box-sizing:border-box;min-width:0}
+*{box-sizing:border-box;min-width:0}[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 Barlow,system-ui,sans-serif;overflow-x:clip}
 .num{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-variant-numeric:tabular-nums}
 header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;padding:14px max(2vw,14px);border-bottom:1px solid var(--line)}
@@ -42,7 +42,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--warn);outline-
 .rider{background:var(--panel);border-radius:10px;padding:10px 12px;border-top:4px solid var(--mute)}
 .rider.rota{border-color:var(--ok)}.rider.loja{border-color:var(--warn)}.rider.pausa{border-color:var(--line)}
 .rider b{font-size:17px}.rider .st{display:flex;justify-content:space-between;align-items:baseline}.rider .st .num{font-size:30px}
-.rider .ld{font-size:16px;margin:2px 0 4px;white-space:nowrap}.rider .ld b{font-family:"Barlow Condensed",sans-serif;font-size:22px}.rider .ld.sai{color:var(--warn)}
+.rider .ld{font-size:16px;margin:2px 0 4px}.rider .ld b{font-family:"Barlow Condensed",sans-serif;font-size:22px}.rider .ld.sai{color:var(--warn)}
 .rider .sm{color:var(--mute);font-size:13px;display:flex;gap:10px;flex-wrap:wrap}
 .chk{display:flex;flex-wrap:wrap;gap:8px;padding:0 max(2vw,14px) 12px}.chk .it{background:#2a2420;border:1px solid #5a4636;border-radius:8px;padding:6px 10px;font-size:14px}.chk .it b{font-family:"Barlow Condensed",sans-serif;font-size:20px;margin-inline-end:6px}.chk .it span{color:var(--mute)}
 .sec{padding:4px max(2vw,14px) 6px;color:var(--mute);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
@@ -115,6 +115,17 @@ function card(o,stage,now){
  return `<article class="card ${lvl(el,lim)} ${late?'late':''}"><div class="top"><span class="id num">#${esc(o.id)}</span><span class="t num">${mm(el)}</span></div>
  <div class="meta"><span class="tag">${esc(o.canal)}</span>${o.pz?`<span class="tag">${pzTxt(o.pz)}</span>`:''}${extra}<span>${label}</span><span>total ${mm(now-o.ab)}</span>${late?`<span class="tag late">ATRASADO +${mm(now-o.due)}</span>`:(o.due?`<span>prazo ${hh(o.due)}</span>`:'')}</div>
  <div class="bar"><i style="width:${pct.toFixed(0)}%"></i></div></article>`}
+// cartão agrupado: uma viagem (em rota) ou uma saída em preparação (aguardando, por motoboy)
+function grupo(g,stage,now){
+ const ps=g.ps,rest=ps.filter(o=>!o.en),base=stage==='rota'?g.sa:Math.min(...ps.map(o=>o.de));
+ const el=now-base,lim=stage==='rota'?M.tr:M.esp;
+ const lates=rest.filter(o=>o.due&&now>o.due),late=lates.length>0,atr=late?Math.max(...lates.map(o=>now-o.due)):0;
+ const pct=Math.max(0,...rest.filter(o=>o.due).map(o=>Math.min(100,(now-o.ab)/(o.due-o.ab)*100)));
+ const pz=somaPz(ps),ids=ps.map(o=>`<span${o.en?' style="text-decoration:line-through;opacity:.5"':''}>#${esc(o.id)}</span>`).join(' · ');
+ const label=stage==='rota'?'em trânsito':'aguardando saída';
+ return `<article class="card ${lvl(el,lim)} ${late?'late':''}"><div class="top"><span class="id num">${ids}</span><span class="t num">${mm(el)}</span></div>
+ <div class="meta"><span><b>${esc(g.mb||'sem motoboy')}</b></span><span class="tag">${ps.length} ${ps.length>1?'entregas':'entrega'}</span>${pz?`<span class="tag">${pzTxt(pz)}</span>`:''}${stage==='rota'&&rest.length<ps.length?`<span class="tag">faltam ${rest.length}</span>`:''}<span>${label}</span>${late?`<span class="tag late">ATRASADO +${mm(atr)}</span>`:''}</div>
+ <div class="bar"><i style="width:${pct.toFixed(0)}%"></i></div></article>`}
 function feito(o){const tot=o.en-o.ab,late=o.due&&o.en>o.due,cls=late?'bad':tot>M.tot?'warn':'',imed=o.co&&o.en-o.co<120000;
  return `<article class="card ${cls}"><div class="top"><span class="id num">#${esc(o.id)}</span><span class="t num">${mm(tot)}</span></div>
  <div class="meta"><span>${esc(o.mb)}</span><span>entregue ${hh(o.en)}</span>${late?`<span class="tag late">+${mm(o.en-o.due)} atraso</span>`:`<span class="tag ok">no prazo</span>`}${imed?'<span class="tag sus">baixa imediata</span>':''}</div></article>`}
@@ -136,6 +147,9 @@ function render(){
   esp=dia.filter(o=>o.de&&!o.co&&!o.en).sort((a,b)=>a.de-b.de),
   rota=dia.filter(o=>o.co&&!o.en).sort((a,b)=>a.co-b.co),
   ent=dia.filter(o=>o.en),rec=ent.filter(o=>now-o.en<30*60000).sort((a,b)=>b.en-a.en);
+ const gRota=Object.entries(vg).flatMap(([mb,vs])=>vs.filter(v=>v.ps.some(o=>!o.en)).map(v=>({mb,sa:v.sa,ps:[...v.ps].sort((a,b)=>(a.en||9e15)-(b.en||9e15))}))).sort((a,b)=>a.sa-b.sa);
+ const porMb={};esp.forEach(o=>{const k=o.mb||('_'+o.uid);(porMb[k]||(porMb[k]={mb:o.mb,ps:[]})).ps.push(o)});
+ const gEsp=Object.values(porMb).sort((a,b)=>Math.min(...a.ps.map(o=>o.de))-Math.min(...b.ps.map(o=>o.de)));
  $('h_chk').hidden=!chk.length;
  $('chk').innerHTML=chk.map(([o,[m,t]])=>`<div class="it"><b>#${esc(o.id)}</b>${esc(m)} há ${mm(t)} <span>${esc(o.mb||'')}</span></div>`).join('');
  const pend={};chk.forEach(([o])=>{if(o.mb)(pend[o.mb]||(pend[o.mb]=[])).push('#'+o.id)});
@@ -149,8 +163,8 @@ function render(){
   ['Entregues hoje',ent.length,''],['No prazo',comPrazo.length?Math.round(noPrazo/comPrazo.length*100)+'%':'–',comPrazo.length&&noPrazo/comPrazo.length<.85?'warn':'ok'],
   [`Dentro da meta ${M.tot/60000} min`,ent.length?Math.round(naMeta/ent.length*100)+'%':'–','']];
  $('kpis').innerHTML=K.map(([l,v,c])=>`<div class="kpi ${c}"><small>${l}</small><div class="num">${v}</div></div>`).join('');
- const col=(t,list,html)=>`<section class="col"><h2>${t}<span class="num">${list.length}</span></h2>${list.length?list.map(html).join(''):'<div class="empty">Nenhum pedido</div>'}</section>`;
- $('board').innerHTML=col('Na cozinha',coz,o=>card(o,'coz',now))+col('Aguardando saída',esp,o=>card(o,'esp',now))+col('Em rota',rota,o=>card(o,'rota',now))+col('Entregues · 30 min',rec,feito);
+ const col=(t,list,html,nPed)=>`<section class="col"><h2>${t}<span class="num">${list.length}${nPed!=null&&nPed!==list.length?`<small style="font-size:15px;font-weight:500;color:var(--mute)"> · ${nPed} ped.</small>`:''}</span></h2>${list.length?list.map(html).join(''):'<div class="empty">Nenhum pedido</div>'}</section>`;
+ $('board').innerHTML=col('Na cozinha',coz,o=>card(o,'coz',now))+col('Aguardando saída',gEsp,g=>grupo(g,'esp',now),esp.length)+col('Em rota',gRota,g=>grupo(g,'rota',now),rota.length)+col('Entregues · 30 min',rec,feito);
  const nomes=[...new Set([...Object.keys(vg),...esp.map(o=>o.mb).filter(Boolean)])];
  $('riders').innerHTML=nomes.map(mb=>{const vs=vg[mb]||[];
   const em=vs.find(v=>!v.fim);let ativo=0,last=null;
@@ -159,9 +173,9 @@ function render(){
   if(em){st='Em rota';cls='rota';el=now-em.sa}else if(last!==null){el=now-last;if(el>3600000){st='Pausa / fora';cls='pausa'}else{st='Retorno / na loja';cls='loja';ativo+=el}}else{st='Aguardando 1ª saída';cls='loja';el=0}
   const n=vs.flatMap(v=>v.ps).filter(o=>o.en).length;
   let carga='';
-  if(em){const rest=em.ps.filter(o=>!o.en);carga=`<div class="ld">Viagem: <b>${em.ps.length}</b> ${em.ps.length>1?'entregas':'entrega'}${somaPz(em.ps)!=null?` · <b>${somaPz(em.ps)}</b> pizzas`:''}${rest.length<em.ps.length?` · faltam ${rest.length}`:''}</div>`}
+  if(em){const rest=em.ps.filter(o=>!o.en);carga=`<div class="ld">Viagem: <b>${em.ps.length}</b> ${em.ps.length>1?'entregas':'entrega'}${somaPz(em.ps)!=null?` · <b>${somaPz(em.ps)}</b> ${somaPz(em.ps)===1?'pizza':'pizzas'}`:''}${rest.length<em.ps.length?` · faltam ${rest.length}`:''}</div>`}
   const sai=esp.filter(o=>o.mb===mb);
-  if(sai.length)carga+=`<div class="ld sai">Saindo: <b>${sai.length}</b> ${sai.length>1?'entregas':'entrega'}${somaPz(sai)!=null?` · <b>${somaPz(sai)}</b> pizzas`:''}</div>`;
+  if(sai.length)carga+=`<div class="ld sai">Saindo: <b>${sai.length}</b> ${sai.length>1?'entregas':'entrega'}${somaPz(sai)!=null?` · <b>${somaPz(sai)}</b> ${somaPz(sai)===1?'pizza':'pizzas'}`:''}</div>`;
   return `<div class="rider ${cls}"><b>${esc(mb)}</b><div class="st"><span>${st}</span><span class="num">${mm(el)}</span></div>${carga}
   <div class="sm"><span>${n} entregas</span><span>${(ativo/3600000).toFixed(1)} h ativas</span><span>${ativo>0?(n/(ativo/3600000)).toFixed(1):'–'}/h</span>${pend[mb]?`<span style="color:var(--warn)">verificar ${esc(pend[mb].join(' '))}</span>`:''}</div></div>`}).join('')||'<div class="empty">Nenhum motoboy saiu hoje</div>';
  const ok=ultimoColetor&&ultimoColetor.ultimo_sucesso,idade=ok?now-ms(ultimoColetor.ultimo_sucesso):null;
