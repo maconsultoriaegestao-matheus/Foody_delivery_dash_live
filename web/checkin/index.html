@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Check-in dos motoboys</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Tablet na porta da loja: o motoboy toca no próprio nome ao chegar. Botões grandes, leitura a 1 metro. */
+:root{color-scheme:dark;--bg:#1b0d20;--panel:#2a1530;--line:#40264a;--ink:#fcf7ef;--mute:#bba5bf;--paper:#fcf7ef;--dark:#3c193f;--ok:#2fbf71;--warn:#f2a516;--bad:#ef4b4b;--acc:#fe7237}
+*{box-sizing:border-box;min-width:0}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 Barlow,system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column}
+.num,.cond{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-variant-numeric:tabular-nums}
+header{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;padding:12px max(2vw,14px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px}.brand .logo{width:34px;height:31px;color:var(--ink)}.brand .logo svg{width:100%;height:100%}
+.brand b{font-size:20px;display:block}.brand span{color:var(--mute);font-size:13px}
+.clock{font-size:clamp(34px,4vw,52px);line-height:1;margin-inline-start:auto}
+button,select,input{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;min-height:44px;padding:0 14px}
+button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+main{flex:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,30%);gap:16px;padding:16px max(2vw,14px)}
+h1{font:700 clamp(26px,3vw,40px)/1.1 "Barlow Condensed",sans-serif;margin:0 0 4px}
+.lede{color:var(--mute);margin:0 0 14px}
+.busca{display:flex;gap:8px;margin-bottom:14px}.busca input{flex:1;font-size:20px;min-height:54px}
+.nomes{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.nome{min-height:86px;font:700 clamp(22px,2.2vw,30px)/1.1 "Barlow Condensed",sans-serif;text-align:left;padding:12px 16px;background:var(--paper);color:var(--dark);border:0;border-inline-start:8px solid var(--acc);border-radius:10px}
+.nome:active{transform:scale(.98)}
+.nome.na{background:var(--panel);color:var(--mute);border-color:var(--ok)}.nome small{display:block;font:600 14px/1.3 Barlow,sans-serif;color:inherit;opacity:.85;margin-top:4px}
+.outro{margin-top:16px;color:var(--mute)}.outro summary{cursor:pointer;min-height:44px;display:flex;align-items:center}
+.outro form{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}.outro input{flex:1;min-width:200px}
+aside{background:var(--panel);border-radius:14px;padding:14px;align-self:start;position:sticky;top:12px}
+aside h2{margin:0 0 10px;font:700 24px/1 "Barlow Condensed",sans-serif;display:flex;justify-content:space-between;align-items:baseline}
+ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border-radius:8px;background:var(--bg)}
+li .p{font:700 26px/1 "Barlow Condensed",sans-serif;color:var(--mute);min-width:2.2ch}
+li b{font:700 22px/1.1 "Barlow Condensed",sans-serif;overflow-wrap:anywhere}li span{color:var(--mute);font-size:13px;display:block;font-family:Barlow,sans-serif;font-weight:400}
+li.vez{background:var(--acc);color:#2a0f2e}li.vez .p,li.vez span{color:#2a0f2e}
+li button{min-height:36px;padding:0 10px;font-size:13px;background:transparent}li.vez button{border-color:#2a0f2e;color:#2a0f2e}
+.vazio{color:var(--mute);padding:10px 0}
+#ok{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(27,13,32,.82)}
+#ok .msg{text-align:center;background:var(--paper);color:var(--dark);border-radius:18px;padding:28px 40px;max-width:min(680px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#ok .msg b{display:block;font:700 clamp(40px,6vw,80px)/1 "Barlow Condensed",sans-serif;color:var(--acc)}
+#ok .msg span{display:block;font-size:clamp(20px,2.4vw,30px);margin-top:8px}
+#ok .msg button{margin-top:18px;background:transparent;color:var(--dark);border-color:var(--dark)}
+.erro{color:var(--bad);font-weight:600}
+footer{padding:8px max(2vw,14px);color:var(--mute);font-size:12px;text-align:right;opacity:.6}
+@media(max-width:800px){main{grid-template-columns:minmax(0,1fr)}aside{position:static;order:-1}}
+@media(prefers-reduced-motion:no-preference){#ok .msg{animation:pulo .5s cubic-bezier(.2,1.6,.4,1)}}@keyframes pulo{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+</style></head><body>
+<header>
+ <div class="brand"><span class="logo" id="logo"></span><div><b id="nome_loja">Check-in</b><span id="sync">Conectando…</span></div></div>
+ <select id="f_loja" hidden aria-label="Loja"></select>
+ <button id="b_tela" type="button">Tela cheia</button>
+ <button id="b_sair" type="button">Sair</button>
+ <div class="clock num" id="clock">--:--</div>
+</header>
+<main>
+ <section>
+  <h1>Chegou na loja? Toque no seu nome.</h1>
+  <p class="lede">A ordem dos toques é a fila. Você sai da fila sozinho quando coletar o próximo pedido na Foody.</p>
+  <div class="busca"><input id="q" type="search" placeholder="Buscar nome" autocomplete="off" aria-label="Buscar nome"></div>
+  <div class="nomes" id="nomes"></div>
+  <details class="outro"><summary>Não achou seu nome?</summary>
+   <p>Digite exatamente como aparece no app da Foody. Assim você sai da fila sozinho quando coletar.</p>
+   <form id="f_outro"><input name="n" maxlength="80" required placeholder="Seu nome no app da Foody"><button class="cond">Entrar na fila</button></form>
+  </details>
+ </section>
+ <aside aria-live="polite"><h2>Fila <span class="num" id="qtd">0</span></h2><ol id="fila"></ol></aside>
+</main>
+<div id="ok" hidden><div class="msg" role="alert"><b id="ok_t"></b><span id="ok_s"></span><button type="button" id="ok_desf">Toquei errado: desfazer</button></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<script src="../shared/supa.js"></script>
+<script>
+{
+const $=id=>document.getElementById(id), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const chave=s=>String(s||'').trim().toLowerCase();
+const min=t=>Math.max(0,Math.floor((Date.now()-new Date(t).getTime())/60000));
+let LOJA=null,LOJAS=[],NOMES=[],FILA=[],canal=null,tOk=null,ultimo=null;
+const sb=()=>Painel.sb;
+
+async function carregarFila(){
+ const {data,error}=await sb().from('fila_checkin').select('id,entregador,chegou_em').eq('loja_id',LOJA.id).is('saiu_em',null).order('chegou_em').order('id');
+ if(error)throw error; FILA=data||[]; desenhar();
+}
+async function carregarNomes(){
+ const {data,error}=await sb().rpc('motoboys_recentes',{p_loja:LOJA.id});
+ if(error)throw error; NOMES=(data||[]).map(r=>r.entregador); desenhar();
+}
+function desenhar(){
+ const pos=new Map(FILA.map((f,i)=>[chave(f.entregador),i+1]));
+ const q=chave($('q').value);
+ const lista=NOMES.filter(n=>!q||chave(n).includes(q));
+ $('nomes').innerHTML=lista.map(n=>{const p=pos.get(chave(n));
+  return `<button type="button" class="nome${p?' na':''}" data-n="${esc(n)}">${esc(n)}${p?`<small>na fila · ${p}º</small>`:''}</button>`}).join('')
+  ||`<p class="vazio">${NOMES.length?'Nenhum nome encontrado.':'Ainda não há motoboys com entregas nesta unidade nos últimos 30 dias.'}</p>`;
+ $('nomes').querySelectorAll('[data-n]').forEach(b=>b.onclick=()=>entrar(b.dataset.n));
+ $('qtd').textContent=FILA.length;
+ $('fila').innerHTML=FILA.map((f,i)=>`<li class="${i?'':'vez'}"><span class="p">${i+1}º</span><div><b>${esc(f.entregador)}</b><span>${i?'':'da vez · '}chegou há ${min(f.chegou_em)} min</span></div><button type="button" data-rm="${f.id}">Tirar</button></li>`).join('')
+  ||'<li><div class="vazio">Fila vazia</div></li>';
+ $('fila').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{
+  if(!b.dataset.conf){b.dataset.conf='1';b.textContent='Confirmar';setTimeout(()=>{if(b.isConnected){delete b.dataset.conf;b.textContent='Tirar'}},4000);return}
+  sair(+b.dataset.rm)});
+}
+async function entrar(nome){
+ const p=FILA.findIndex(f=>chave(f.entregador)===chave(nome));
+ if(p>=0){mostrar(nome.split(' ')[0],`Você já está na fila: ${p+1}º`,null);return}
+ const {data,error}=await sb().from('fila_checkin').insert({loja_id:LOJA.id,entregador:nome}).select('id').single();
+ if(error){ if(error.code==='23505'){await carregarFila();return entrar(nome)} mostrar('Não deu certo',error.message,null);return }
+ await carregarFila();
+ const pos=FILA.findIndex(f=>f.id===data.id)+1;
+ mostrar(nome.split(' ')[0]+(pos===1?', você é o da vez!':''),pos===1?'1º da fila':`Você é o ${pos}º da fila`,data.id);
+}
+async function sair(id){
+ const {error}=await sb().from('fila_checkin').update({saiu_em:new Date().toISOString(),motivo_saida:'manual'}).eq('id',id).is('saiu_em',null);
+ if(error)alert(error.message); await carregarFila();
+}
+function mostrar(t,s,id){
+ $('ok_t').textContent=t;$('ok_s').textContent=s;ultimo=id;$('ok_desf').hidden=!id;$('ok').hidden=false;
+ clearTimeout(tOk);tOk=setTimeout(()=>{$('ok').hidden=true;$('q').value='';desenhar()},id?6000:3000);
+}
+$('ok').onclick=e=>{if(e.target.id!=='ok_desf'){$('ok').hidden=true;$('q').value='';desenhar()}};
+$('ok_desf').onclick=async()=>{if(ultimo)await sair(ultimo);ultimo=null;$('ok').hidden=true};
+$('q').oninput=desenhar;
+$('f_outro').onsubmit=e=>{e.preventDefault();const n=e.target.n.value.trim();if(n){entrar(n);e.target.reset();e.target.closest('details').open=false}};
+
+function assinar(){
+ if(canal)sb().removeChannel(canal);
+ canal=sb().channel('fila-'+LOJA.id).on('postgres_changes',{event:'*',schema:'public',table:'fila_checkin',filter:`loja_id=eq.${LOJA.id}`},()=>carregarFila().catch(()=>{})).subscribe(st=>{
+  $('sync').textContent=st==='SUBSCRIBED'?'Ao vivo':'Reconectando…';$('sync').className=st==='SUBSCRIBED'?'':'erro'});
+}
+async function iniciarLoja(){
+ $('nome_loja').textContent=LOJA.nome+' · check-in';
+ await Promise.all([carregarNomes(),carregarFila()]);assinar();
+}
+$('logo').innerHTML=Painel.SIMBOLO;
+$('b_sair').onclick=()=>Painel.sair();
+$('b_tela').onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}catch(_){}};
+$('f_loja').onchange=()=>{LOJA=LOJAS.find(l=>l.id===$('f_loja').value);Painel.guardarLoja(LOJA.id);iniciarLoja()};
+const relogio=()=>{$('clock').textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'})};
+Painel.exigirLogin('Check-in dos motoboys').then(async()=>{
+ LOJAS=await Painel.lojas();
+ if(!LOJAS.length){$('sync').textContent='Seu usuário ainda não tem acesso a nenhuma loja';$('sync').className='erro';return}
+ LOJA=Painel.lojaPreferida(LOJAS);
+ $('f_loja').innerHTML=LOJAS.map(l=>`<option value="${esc(l.id)}">${esc(l.nome)}</option>`).join('');$('f_loja').value=LOJA.id;$('f_loja').hidden=LOJAS.length<2;
+ await iniciarLoja();
+ relogio();setInterval(relogio,1000);
+ setInterval(()=>{if($('ok').hidden)desenhar()},30000);            // atualiza "há X min"
+ setInterval(()=>carregarFila().catch(()=>{}),30000);               // rede de segurança se o tempo real cair
+ setInterval(()=>carregarNomes().catch(()=>{}),10*60000);
+}).catch(e=>{$('sync').textContent='Erro: '+(e.message||e);$('sync').className='erro'});
+}
+</script></body></html>

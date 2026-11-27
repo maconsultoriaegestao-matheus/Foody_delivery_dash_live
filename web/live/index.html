@@ -54,6 +54,12 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--warn);outline-
 #festa .msg{position:relative;text-align:center;padding:24px 36px;border-radius:18px;background:var(--paper);color:var(--dark);box-shadow:0 20px 60px rgba(0,0,0,.5)}
 #festa .msg b{display:block;font-family:"Barlow Condensed",sans-serif;font-size:clamp(44px,7vw,110px);line-height:1;color:var(--acc)}#festa .msg span{display:block;font-size:clamp(20px,2.4vw,34px);margin-top:8px}
 @media(prefers-reduced-motion:no-preference){#festa .msg{animation:pulo .9s cubic-bezier(.2,1.6,.4,1)}}@keyframes pulo{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+.fila{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;padding:12px max(2vw,14px) 0}
+.fila .vez{background:var(--acc);color:#2a0f2e;border-radius:12px;padding:8px 18px;display:flex;flex-direction:column;justify-content:center;min-width:240px}
+.fila .vez small{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}.fila .vez b{font-family:"Barlow Condensed",sans-serif;font-size:clamp(34px,3.4vw,52px);line-height:1}
+.fila .vez span{font-size:14px}.fila .prox{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.fila .it{background:var(--panel);border-radius:10px;padding:8px 14px;display:flex;gap:8px;align-items:baseline}.fila .it b{font-family:"Barlow Condensed",sans-serif;font-size:26px}.fila .it .p{color:var(--mute);font-family:"Barlow Condensed",sans-serif;font-size:22px}.fila .it span{color:var(--mute);font-size:13px}
+.fila .nada{color:var(--mute);font-size:14px;align-self:center}
 .sec{padding:4px max(2vw,14px) 6px;color:var(--mute);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
 @media(max-width:1100px){.board{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.board{grid-template-columns:minmax(0,1fr)}.col{min-height:0}.clock{margin-inline-start:0}}
@@ -70,6 +76,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--warn);outline-
  <div class="clock num" id="clock">--:--</div>
 </header>
 <section class="metas" id="metasbar"></section>
+<section class="fila" id="fila" aria-live="polite"></section>
 <section class="kpis" id="kpis"></section>
 <main class="board" id="board"></main>
 <div class="sec" id="h_chk" hidden><span>Verificar · fora do kanban</span><span>Pedidos acima do limite da etapa (provável baixa esquecida na Foody)</span></div>
@@ -85,7 +92,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--warn);outline-
 const $=id=>document.getElementById(id), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ATIVOS=['open','ready','dispatched','accepted','onGoing'];
 const COLS='uid,numero,status,canal,entregador,aberto_em,despachado_em,coletado_em,entregue_em,finalizado_em,prazo_em,dia,qtd_pizzas,valor_total';
-let LOJA=null,LOJAS=[],M={},canal=null,ultimoColetor=null,METAS=[];
+let LOJA=null,LOJAS=[],M={},canal=null,ultimoColetor=null,METAS=[],FILA=[],FILA_HOJE=0;
 const PED=new Map();
 const ms=v=>v?new Date(v).getTime():null;
 const mm=sec=>{sec=Math.max(0,Math.round(sec/1000));const m=Math.floor(sec/60),x=sec%60;return m+':'+String(x).padStart(2,'0')};
@@ -104,10 +111,17 @@ async function carregar(){
  const {data:e}=await Painel.sb.from('coletor_estado').select('ultimo_sucesso,ultimo_erro').eq('loja_id',LOJA.id).maybeSingle();
  ultimoColetor=e;
  const {data:mt}=await Painel.sb.from('metas_semana').select('dia_semana,meta_vendas,meta_viagens').eq('loja_id',LOJA.id);METAS=mt||[];
+ await carregarFila();
+}
+// fila da vez: check-in dos motoboys no tablet da loja (página /checkin/)
+async function carregarFila(){
+ const {data}=await Painel.sb.from('fila_checkin').select('id,entregador,chegou_em,saiu_em').eq('loja_id',LOJA.id).eq('dia',Painel.diaOperacional()).order('chegou_em').order('id');
+ FILA_HOJE=(data||[]).length;FILA=(data||[]).filter(f=>!f.saiu_em);
 }
 function assinar(){
  if(canal)Painel.sb.removeChannel(canal);
- canal=Painel.sb.channel('ped-'+LOJA.id).on('postgres_changes',{event:'*',schema:'public',table:'pedidos',filter:`loja_id=eq.${LOJA.id}`},p=>guardar(p.new)).subscribe();
+ canal=Painel.sb.channel('ped-'+LOJA.id).on('postgres_changes',{event:'*',schema:'public',table:'pedidos',filter:`loja_id=eq.${LOJA.id}`},p=>guardar(p.new))
+  .on('postgres_changes',{event:'*',schema:'public',table:'fila_checkin',filter:`loja_id=eq.${LOJA.id}`},()=>carregarFila().catch(()=>{})).subscribe();
 }
 // viagens do dia: pedidos do mesmo motoboy coletados antes da 1ª entrega da viagem atual
 function viagens(lista){
@@ -170,7 +184,18 @@ function feito(o){const tot=o.en-o.ab,late=o.due&&o.en>o.due,cls=late?'bad':tot>
  return `<article class="card ${cls}"><div class="top"><span class="id num">#${esc(o.id)}</span><span class="t num">${mm(tot)}</span></div>
  <div class="meta"><span>${esc(o.mb)}</span><span>entregue ${hh(o.en)}</span>${late?`<span class="tag late">+${mm(o.en-o.due)} atraso</span>`:`<span class="tag ok">no prazo</span>`}${imed?'<span class="tag sus">baixa imediata</span>':''}</div></article>`}
 
+function renderFila(){
+ const el=$('fila'),now=Date.now(),k=s=>String(s||'').trim().toLowerCase();
+ if(!FILA.length){el.innerHTML=`<div class="nada">${FILA_HOJE?'Fila da vez vazia: nenhum motoboy na loja.':'Fila da vez: nenhum check-in hoje (tablet da porta em /checkin).'}</div>`;return}
+ // pedidos já despachados para o motoboy e ainda não coletados
+ const carga=n=>[...PED.values()].filter(o=>o.de&&!o.co&&!o.en&&k(o.mb)===k(n)).length;
+ const t=f=>Math.max(0,Math.floor((now-new Date(f.chegou_em).getTime())/60000));
+ const v=FILA[0],c=carga(v.entregador);
+ el.innerHTML=`<div class="vez"><small>Motoboy da vez</small><b>${esc(v.entregador)}</b><span>na loja há ${t(v)} min${c?` · já com ${c} ${c>1?'pedidos':'pedido'}`:''}</span></div>
+  <div class="prox">${FILA.slice(1,8).map((f,i)=>`<div class="it"><span class="p">${i+2}º</span><b>${esc(f.entregador)}</b><span>${t(f)} min</span></div>`).join('')}${FILA.length>8?`<div class="it"><span>+${FILA.length-8}</span></div>`:''}</div>`;
+}
 function render(){
+ renderFila();
  if(!LOJA)return;const now=Date.now();$('clock').textContent=hh(now);
  const hoje=Painel.diaOperacional();
  const todos=[...PED.values()].filter(o=>!['cancelled','rejected'].includes(o.st)&&o.ab);
