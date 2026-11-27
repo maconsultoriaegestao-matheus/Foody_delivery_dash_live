@@ -51,6 +51,7 @@ details li{margin:4px 0}
 .topo-in{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
 .abas{display:flex;gap:2px;flex-wrap:wrap}.abas button{border:0;border-bottom:3px solid transparent;border-radius:0;background:none;font-weight:600;color:var(--mute);padding:0 10px}
 .abas button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--ver)}
+a.inicio{display:inline-flex;align-items:center;gap:6px;font:inherit;font-weight:600;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px;min-height:36px;padding:0 12px;text-decoration:none}a.inicio:hover{border-color:var(--ver)}a.inicio:focus-visible{outline:2px solid var(--warn);outline-offset:2px}
 .topo-dir{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.topo-dir label{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--mute)}
 button.pri{background:var(--ver);border-color:var(--ver);color:#2a0f2e;font-weight:700}button.pri:disabled{opacity:.45;cursor:not-allowed}
 button.lnk{border:0;background:none;color:var(--ink);text-decoration:underline;text-decoration-color:var(--ver);text-underline-offset:3px;padding:0 6px;min-height:36px}
@@ -88,7 +89,7 @@ table.sem{width:100%}table.sem th{cursor:default;text-align:left}table.sem td{pa
 </style></head><body>
 <nav class="topo" aria-label="Seções"><div class="wrap topo-in">
  <div class="abas" role="tablist"><button type="button" role="tab" id="t_ind" aria-selected="true">Indicadores</button><button type="button" role="tab" id="t_fech" aria-selected="false" hidden>Fechamento de entregadores</button></div>
- <div class="topo-dir"><label id="w_loja" hidden>Loja<select id="f_loja"></select></label><button id="b_sair" type="button">Sair</button></div>
+ <div class="topo-dir"><a href="../" class="inicio" title="Voltar ao menu inicial">⌂ Início</a><label id="w_loja" hidden>Loja<select id="f_loja"></select></label><button id="b_sair" type="button">Sair</button></div>
 </div></nav>
 <div id="v_ind">
 <section class="band hero"><div class="wrap">

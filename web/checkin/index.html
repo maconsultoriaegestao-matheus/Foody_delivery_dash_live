@@ -14,6 +14,7 @@ header{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;padding:12px
 .clock{font-size:clamp(34px,4vw,52px);line-height:1;margin-inline-start:auto}
 button,select,input{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;min-height:44px;padding:0 14px}
 button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--warn);outline-offset:2px}
+a.inicio{display:inline-flex;align-items:center;gap:6px;font:inherit;font-weight:600;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;min-height:44px;padding:0 12px;text-decoration:none}a.inicio:hover{border-color:var(--acc)}a.inicio:focus-visible{outline:2px solid var(--warn);outline-offset:2px}
 main{flex:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,30%);gap:16px;padding:16px max(2vw,14px)}
 h1{font:700 clamp(26px,3vw,40px)/1.1 "Barlow Condensed",sans-serif;margin:0 0 4px}
 .lede{color:var(--mute);margin:0 0 14px}
@@ -45,6 +46,7 @@ footer{padding:8px max(2vw,14px);color:var(--mute);font-size:12px;text-align:rig
 </style></head><body>
 <header>
  <div class="brand"><span class="logo" id="logo"></span><div><b id="nome_loja">Check-in</b><span id="sync">Conectando…</span></div></div>
+ <a href="../" class="inicio" title="Voltar ao menu inicial">⌂ Início</a>
  <select id="f_loja" hidden aria-label="Loja"></select>
  <button id="b_tela" type="button">Tela cheia</button>
  <button id="b_sair" type="button">Sair</button>

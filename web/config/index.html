@@ -38,9 +38,10 @@ form.f .acts{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;marg
 .msg{grid-column:1/-1;font-size:14px;min-height:1.3em}.msg.err{color:var(--crit)}.msg.ok{color:light-dark(#0b6b1b,#5fdb73)}
 .empty{color:var(--mute);padding:14px 0}
 @media(max-width:600px){form.f{grid-template-columns:minmax(0,1fr)}table{font-size:13px}}
+a.inicio{display:inline-flex;align-items:center;gap:6px;font:inherit;font-weight:600;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px;min-height:40px;padding:0 12px;text-decoration:none}a.inicio:hover{border-color:var(--ver)}a.inicio:focus-visible{outline:2px solid var(--ver);outline-offset:2px}
 </style></head><body>
 <div class="wrap">
- <div class="top"><h1>Configurações</h1><div><a href="../" class="sm">Início</a> <button id="b_sair" type="button">Sair</button></div></div>
+ <div class="top"><h1>Configurações</h1><div><a href="../" class="inicio" title="Voltar ao menu inicial">⌂ Início</a> <button id="b_sair" type="button">Sair</button></div></div>
  <p class="lede">Cada unidade tem o seu token Foody, as suas metas e a sua TV. O token é testado na Foody e guardado no cofre do servidor; depois de salvo, ele não aparece mais aqui.</p>
  <div class="top"><h2>Clientes e unidades</h2><div><button type="button" id="b_cli">Novo cliente</button> <button type="button" class="pri" id="b_loja">Nova unidade</button></div></div>
  <div id="lista"><p class="empty">Carregando…</p></div>

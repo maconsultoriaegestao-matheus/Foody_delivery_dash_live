@@ -20,6 +20,7 @@ header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;padding:14px
 .ctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 button,select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;min-height:40px;padding:0 12px;cursor:pointer}
 button:focus-visible,select:focus-visible{outline:2px solid var(--warn);outline-offset:2px}
+a.inicio{display:inline-flex;align-items:center;gap:6px;font:inherit;font-weight:600;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;min-height:40px;padding:0 12px;text-decoration:none}a.inicio:hover{border-color:var(--acc)}a.inicio:focus-visible{outline:2px solid var(--warn);outline-offset:2px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border-bottom:1px solid var(--line)}
 .kpi{padding:12px 16px;box-shadow:inset -1px 0 var(--line),inset 0 -1px var(--line)}.kpi small{display:block;color:var(--mute);font-size:13px}.kpi .num{font-size:clamp(30px,3vw,46px);line-height:1.05}
 .kpi.bad .num{color:var(--bad)}.kpi.ok .num{color:var(--ok)}.kpi.warn .num{color:var(--warn)}
@@ -72,6 +73,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--warn);outline-
 <header>
  <div class="brand"><span class="logo" id="logo"></span><b id="nome">Painel ao vivo</b><span id="sync">Conectando…</span></div>
  <div class="ctl">
+  <a href="../" class="inicio" title="Voltar ao menu inicial">⌂ Início</a>
   <select id="f_loja" hidden aria-label="Loja"></select>
   <button id="b_som" type="button" aria-pressed="false">Som: desligado</button>
   <button id="b_tela" type="button">Tela cheia</button>
