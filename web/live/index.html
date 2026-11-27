@@ -109,7 +109,7 @@ const somaPz=l=>{const v=l.map(o=>o.pz).filter(x=>x!=null);return v.length?v.red
 const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
 const lvl=(el,m)=>el>=m?'bad':el>=m*.8?'warn':'';
 function guardar(r){if(!r||!r.uid)return;PED.set(r.uid,{id:r.numero||'',uid:r.uid,st:r.status,canal:r.canal||'',mb:(r.entregador||'').trim(),
- ab:ms(r.aberto_em),de:ms(r.despachado_em),ac:ms(r.aceito_em),co:ms(r.coletado_em),en:ms(r.entregue_em)||(r.status==='closed'?ms(r.finalizado_em):null),due:ms(r.prazo_em),dia:r.dia,pz:r.qtd_pizzas,val:r.valor_total==null?0:+r.valor_total})}
+ ab:ms(r.aberto_em),de:ms(r.despachado_em),ac:ms(r.aceito_em),co:ms(r.coletado_em),en:ms(r.entregue_em)||(r.status==='closed'?ms(r.finalizado_em):null),due:(ms(r.prazo_em)>ms(r.aberto_em)?ms(r.prazo_em):null),dia:r.dia,pz:r.qtd_pizzas,val:r.valor_total==null?0:+r.valor_total})}
 
 async function carregar(){
  PED.clear();const hoje=Painel.diaOperacional();

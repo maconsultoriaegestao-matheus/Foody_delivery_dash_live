@@ -99,6 +99,9 @@ let D=null;
 const quando=t=>{if(!t)return'–';const s=(Date.now()-new Date(t).getTime())/1000;return s<90?`há ${Math.round(s)} s`:s<5400?`há ${Math.round(s/60)} min`:new Date(t).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})};
 const msg=(f,t,tipo)=>{const m=f.querySelector('.msg');m.textContent=t;m.className='msg '+(tipo||'')};
 document.querySelectorAll('[data-fechar]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+// evita salvar duas vezes com clique duplo: botão principal fica desativado enquanto o formulário processa
+document.querySelectorAll('form').forEach(f=>f.addEventListener('submit',()=>{const b=f.querySelector('button.pri');if(!b||b.disabled)return;b.disabled=true;
+ const solta=()=>{const m=f.querySelector('.msg');if(m&&/Salvando|Criando|Testando/.test(m.textContent))return setTimeout(solta,300);b.disabled=false};setTimeout(solta,600)},true));
 
 async function carregar(){
  D=await Painel.admin('listar');
