@@ -56,10 +56,7 @@ footer{padding:8px max(2vw,14px);color:var(--mute);font-size:12px;text-align:rig
   <p class="lede">A ordem dos toques é a fila. Você sai da fila sozinho quando coletar o próximo pedido na Foody.</p>
   <div class="busca"><input id="q" type="search" placeholder="Buscar nome" autocomplete="off" aria-label="Buscar nome"></div>
   <div class="nomes" id="nomes"></div>
-  <details class="outro"><summary>Não achou seu nome?</summary>
-   <p>Digite exatamente como aparece no app da Foody. Assim você sai da fila sozinho quando coletar.</p>
-   <form id="f_outro"><input name="n" maxlength="80" required placeholder="Seu nome no app da Foody"><button class="cond">Entrar na fila</button></form>
-  </details>
+  <p class="outro">Aparecem aqui os motoboys que já coletaram ao menos um pedido hoje. O nome entra na lista logo depois da primeira coleta do dia.</p>
  </section>
  <aside aria-live="polite"><h2>Fila <span class="num" id="qtd">0</span></h2><ol id="fila"></ol></aside>
 </main>
@@ -88,7 +85,7 @@ function desenhar(){
  const lista=NOMES.filter(n=>!q||chave(n).includes(q));
  $('nomes').innerHTML=lista.map(n=>{const p=pos.get(chave(n));
   return `<button type="button" class="nome${p?' na':''}" data-n="${esc(n)}">${esc(n)}${p?`<small>na fila · ${p}º</small>`:''}</button>`}).join('')
-  ||`<p class="vazio">${NOMES.length?'Nenhum nome encontrado.':'Ainda não há motoboys com entregas nesta unidade nos últimos 30 dias.'}</p>`;
+  ||`<p class="vazio">${NOMES.length?'Nenhum nome encontrado.':'Nenhum motoboy coletou pedido hoje ainda.'}</p>`;
  $('nomes').querySelectorAll('[data-n]').forEach(b=>b.onclick=()=>entrar(b.dataset.n));
  $('qtd').textContent=FILA.length;
  $('fila').innerHTML=FILA.map((f,i)=>`<li class="${i?'':'vez'}"><span class="p">${i+1}º</span><div><b>${esc(f.entregador)}</b><span>${i?'':'da vez · '}chegou há ${min(f.chegou_em)} min</span></div><button type="button" data-rm="${f.id}">Tirar</button></li>`).join('')
@@ -117,7 +114,6 @@ function mostrar(t,s,id){
 $('ok').onclick=e=>{if(e.target.id!=='ok_desf'){$('ok').hidden=true;$('q').value='';desenhar()}};
 $('ok_desf').onclick=async()=>{if(ultimo)await sair(ultimo);ultimo=null;$('ok').hidden=true};
 $('q').oninput=desenhar;
-$('f_outro').onsubmit=e=>{e.preventDefault();const n=e.target.n.value.trim();if(n){entrar(n);e.target.reset();e.target.closest('details').open=false}};
 
 function assinar(){
  if(canal)sb().removeChannel(canal);
@@ -142,7 +138,7 @@ Painel.exigirLogin('Check-in dos motoboys').then(async()=>{
  relogio();setInterval(relogio,1000);
  setInterval(()=>{if($('ok').hidden)desenhar()},30000);            // atualiza "há X min"
  setInterval(()=>carregarFila().catch(()=>{}),30000);               // rede de segurança se o tempo real cair
- setInterval(()=>carregarNomes().catch(()=>{}),10*60000);
+ setInterval(()=>carregarNomes().catch(()=>{}),60000);               // novos motoboys entram após a 1ª coleta
 }).catch(e=>{$('sync').textContent='Erro: '+(e.message||e);$('sync').className='erro'});
 }
 </script></body></html>
