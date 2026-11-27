@@ -45,6 +45,8 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--warn);outline-
 .rider .ld{font-size:16px;margin:2px 0 4px}.rider .ld b{font-family:"Barlow Condensed",sans-serif;font-size:22px}.rider .ld.sai{color:var(--warn)}
 .rider .sm{color:var(--mute);font-size:13px;display:flex;gap:10px;flex-wrap:wrap}
 .chk{display:flex;flex-wrap:wrap;gap:8px;padding:0 max(2vw,14px) 12px}.chk .it{background:#2a2420;border:1px solid #5a4636;border-radius:8px;padding:6px 10px;font-size:14px}.chk .it b{font-family:"Barlow Condensed",sans-serif;font-size:20px;margin-inline-end:6px}.chk .it span{color:var(--mute)}
+.placar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:4px max(2vw,14px) 12px}.placar div{background:var(--panel);border-radius:10px;padding:10px 16px;display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-top:4px solid var(--mute)}.placar div.rota{border-color:var(--ok)}.placar div.loja{border-color:var(--warn)}.placar span{font-size:16px;color:var(--mute)}.placar b{font-family:"Barlow Condensed",sans-serif;font-size:clamp(40px,4vw,60px);line-height:1}
+@media(max-width:600px){.placar{grid-template-columns:minmax(0,1fr)}}
 .sec{padding:4px max(2vw,14px) 6px;color:var(--mute);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
 @media(max-width:1100px){.board{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.board{grid-template-columns:minmax(0,1fr)}.col{min-height:0}.clock{margin-inline-start:0}}
@@ -63,6 +65,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--warn);outline-
 <main class="board" id="board"></main>
 <div class="sec" id="h_chk" hidden><span>Verificar · fora do kanban</span><span>Pedidos acima do limite da etapa (provável baixa esquecida na Foody)</span></div>
 <section class="chk" id="chk"></section>
+<section class="placar" id="placar"></section>
 <div class="sec"><span>Motoboys hoje</span><span id="metas"></span></div>
 <section class="riders" id="riders"></section>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
@@ -168,23 +171,31 @@ function render(){
  const nomes=[...new Set([...Object.keys(vg),...esp.map(o=>o.mb).filter(Boolean)])];
  $('riders').innerHTML=nomes.map(mb=>{const vs=vg[mb]||[];
   const em=vs.find(v=>!v.fim);let ativo=0,last=null;
-  vs.forEach(v=>{if(last!==null&&v.sa-last>0&&v.sa-last<=3600000)ativo+=v.sa-last;ativo+=(v.fim||now)-v.sa;if(v.fim)last=v.fim});
+  // hora trabalhada: 1ª coleta do dia até a última entrega; a viagem final conta no máximo o teto configurado
+  vs.forEach(v=>{if(v.fim)last=v.fim});
+  if(vs.length){const ini=Math.min(...vs.flatMap(v=>v.ps.map(o=>o.co))),ult=vs[vs.length-1];
+   const fim=em?Math.min(now,em.sa+M.teto):Math.min(ult.fim||now,ult.sa+M.teto);ativo=Math.max(0,fim-ini)}
   let st,cls,el;
-  if(em){st='Em rota';cls='rota';el=now-em.sa}else if(last!==null){el=now-last;if(el>3600000){st='Pausa / fora';cls='pausa'}else{st='Retorno / na loja';cls='loja';ativo+=el}}else{st='Aguardando 1ª saída';cls='loja';el=0}
+  if(em){st='Em rota';cls='rota';el=now-em.sa}else if(last!==null){el=now-last;if(el>3600000){st='Pausa / fora';cls='pausa'}else{st='Retorno / na loja';cls='loja'}}else{st='Aguardando 1ª saída';cls='loja';el=0}
   const n=vs.flatMap(v=>v.ps).filter(o=>o.en).length;
   let carga='';
   if(em){const rest=em.ps.filter(o=>!o.en);carga=`<div class="ld">Viagem: <b>${em.ps.length}</b> ${em.ps.length>1?'entregas':'entrega'}${somaPz(em.ps)!=null?` · <b>${somaPz(em.ps)}</b> ${somaPz(em.ps)===1?'pizza':'pizzas'}`:''}${rest.length<em.ps.length?` · faltam ${rest.length}`:''}</div>`}
   const sai=esp.filter(o=>o.mb===mb);
   if(sai.length)carga+=`<div class="ld sai">Saindo: <b>${sai.length}</b> ${sai.length>1?'entregas':'entrega'}${somaPz(sai)!=null?` · <b>${somaPz(sai)}</b> ${somaPz(sai)===1?'pizza':'pizzas'}`:''}</div>`;
   return `<div class="rider ${cls}"><b>${esc(mb)}</b><div class="st"><span>${st}</span><span class="num">${mm(el)}</span></div>${carga}
-  <div class="sm"><span>${n} entregas</span><span>${(ativo/3600000).toFixed(1)} h ativas</span><span>${ativo>0?(n/(ativo/3600000)).toFixed(1):'–'}/h</span>${pend[mb]?`<span style="color:var(--warn)">verificar ${esc(pend[mb].join(' '))}</span>`:''}</div></div>`}).join('')||'<div class="empty">Nenhum motoboy saiu hoje</div>';
+  <div class="sm"><span>${n} entregas</span><span>${(ativo/3600000).toFixed(1)} h trabalhadas</span><span>${ativo>0?(n/(ativo/3600000)).toFixed(1):'–'}/h</span>${pend[mb]?`<span style="color:var(--warn)">verificar ${esc(pend[mb].join(' '))}</span>`:''}</div></div>`}).join('')||'<div class="empty">Nenhum motoboy saiu hoje</div>';
+ // placar: ativo = fez a 1ª coleta do dia; em entrega = tem viagem aberta; aguardo/retorno = os demais ativos
+ const ativosMb=new Set(dia0.filter(o=>o.co&&o.mb).map(o=>o.mb));
+ const emEntrega=new Set(Object.entries(vg).filter(([,vs])=>vs.some(v=>!v.fim)).map(([mb])=>mb));
+ const nAt=ativosMb.size,nEnt=[...emEntrega].filter(m=>ativosMb.has(m)).length;
+ $('placar').innerHTML=`<div><span>Entregadores ativos hoje</span><b>${nAt}</b></div><div class="rota"><span>Em entrega</span><b>${nEnt}</b></div><div class="loja"><span>Aguardo / retorno à base</span><b>${nAt-nEnt}</b></div>`;
  const ok=ultimoColetor&&ultimoColetor.ultimo_sucesso,idade=ok?now-ms(ultimoColetor.ultimo_sucesso):null;
  const s=$('sync');if(!ok){s.textContent='Coletor sem dados';s.className='off'}
  else if(idade>120000){s.textContent=`Sem atualização da Foody há ${Math.round(idade/60000)} min`;s.className='off'}
  else{s.textContent=`Ao vivo · Foody atualizado às ${new Date(ms(ultimoColetor.ultimo_sucesso)).toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo'})}`;s.className=''}
 }
 async function iniciarLoja(){
- M={desp:LOJA.meta_despacho_min*60000,esp:LOJA.meta_espera_min*60000,tr:LOJA.meta_transito_min*60000,tot:LOJA.meta_total_min*60000,
+ M={desp:LOJA.meta_despacho_min*60000,esp:LOJA.meta_espera_min*60000,tr:LOJA.meta_transito_min*60000,tot:LOJA.meta_total_min*60000,teto:(LOJA.teto_viagem_min||60)*60000,
   lc:(LOJA.limite_cozinha_min||90)*60000,le:(LOJA.limite_espera_min||60)*60000,lr:(LOJA.limite_rota_min||60)*60000};
  $('nome').textContent=LOJA.nome+' · ao vivo';
  $('metas').textContent=`Metas: despacho ${LOJA.meta_despacho_min} min · espera ${LOJA.meta_espera_min} min · trânsito ${LOJA.meta_transito_min} min · total ${LOJA.meta_total_min} min`;

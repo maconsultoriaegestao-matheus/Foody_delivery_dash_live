@@ -78,11 +78,17 @@ details li{margin:4px 0}
   <div class="rows" id="c_viagem"></div><p class="note" style="margin-top:12px" id="n_viagem"></p></div>
 </div></section>
 
+<section class="band" style="padding-top:0"><div class="wrap grid2">
+ <div class="chart"><h2>Motoboys que trabalharam, por dia</h2><p id="sub_mbdia"></p><div class="fig" id="c_mbdia"></div></div>
+ <div class="chart"><h2>Jornada por dia</h2><p>Horas trabalhadas somadas de todos os motoboys.</p>
+  <div class="scroll" style="max-height:300px;overflow-y:auto"><table id="t_jor"><thead><tr><th>Dia</th><th>Motoboys</th><th>Horas</th><th>Entregas</th><th>Entregas/h</th><th>Horas por motoboy</th></tr></thead><tbody></tbody></table></div></div>
+</div></section>
+
 <section class="band" style="padding-top:0"><div class="wrap">
  <h2>Ranking de motoboys</h2>
- <p class="lede">Horas ativas = tempo em rota + intervalos de até 60 min entre viagens. Trânsito só com registros válidos. A confiabilidade mostra quanto dos registros do motoboy é suspeito; quem não registra a rota aparece rápido sem ser.</p>
+ <p class="lede" id="lede_rank">Horas trabalhadas = da primeira coleta até a última entrega do dia. Trânsito só com registros válidos. A confiabilidade mostra quanto dos registros do motoboy é suspeito; quem não registra a rota aparece rápido sem ser.</p>
  <div class="scroll" style="margin-top:14px"><table id="t_rank"><thead><tr>
-  <th data-k="mb">Motoboy</th><th data-k="n">Entregas</th><th data-k="h">Horas ativas</th><th data-k="eh" aria-sort="descending">Entregas/h</th><th data-k="rota">% em rota</th>
+  <th data-k="mb">Motoboy</th><th data-k="n">Entregas</th><th data-k="h">Horas trabalhadas</th><th data-k="eh" aria-sort="descending">Entregas/h</th><th data-k="rota">% em rota</th>
   <th data-k="tr">Trânsito médio</th><th data-k="km">Km rota</th><th data-k="np">No prazo</th><th data-k="sus">Registros suspeitos</th></tr></thead><tbody></tbody></table></div>
  <p class="note">Mostra motoboys com pelo menos 20 entregas no filtro.</p>
 </div></section>
@@ -98,6 +104,7 @@ details li{margin:4px 0}
   <li><b>Até despacho</b> = despacho − abertura. Inclui cozinha + fila: o "pronto" do Foody é automático (~10 min) e não mede a cozinha. Fora da média: &lt; 2 min (pedidos lançados à mão) e &gt; 60 min.</li>
   <li><b>Viagem</b> = pedidos do mesmo motoboy coletados antes da primeira entrega válida. Saída = última coleta.</li>
   <li><b>Espera p/ saída</b> = saída da viagem − despacho. <b>Trânsito</b> = 1º pedido: entrega − saída; demais: entrega − entrega anterior.</li>
+  <li><b>Hora trabalhada</b> = da primeira coleta até a última entrega do dia. Se a última viagem passar do teto configurado na unidade (saída → última entrega), ela conta como o teto. O filtro de horário de abertura não se aplica à jornada.</li>
   <li><b>Retorno/ocioso</b> = próxima saída − última entrega; intervalos &gt; 60 min contam como pausa/fim de turno.</li>
   <li><b>Fora da média de trânsito</b>: baixa imediata (coleta→entrega &lt; 2 min), baixa no retorno (entrega a ±2 min da próxima coleta), baixa em lote (2º pedido &lt; 1 min após o anterior), 1º trecho &gt; 45 km/h, trecho &gt; 60 min. Tempo total &gt; 120 min sai da mediana.</li>
   <li>Fonte: banco do painel (histórico importado do relatório Foody + coletor da API a cada 30 s), pedidos com entregador. Sem dados de clientes.</li>
@@ -117,7 +124,7 @@ const fmin=x=>x==null?'–':f1(x)+' min';const kmin=x=>x==null?'–':f1(x)+'<u>m
 const pct=x=>x==null?'–':Math.round(x*100)+'%';
 const MOT=['','Baixa imediata','Baixa no retorno','Baixa em lote','Rápido demais (>45 km/h)','Trânsito > 60 min'];
 const DOW=['dom','seg','ter','qua','qui','sex','sáb'];
-let P=[],V=[];
+let P=[],V=[],J=[];
 const tip=$('tip');
 function showTip(e,html){tip.innerHTML=html;tip.style.opacity=1;const x=Math.min(e.clientX+14,innerWidth-tip.offsetWidth-8);tip.style.left=x+'px';tip.style.top=(e.clientY-36)+'px'}
 function hideTip(){tip.style.opacity=0}
@@ -130,7 +137,8 @@ function filtered(){
  const okHora=h=>hora==='all'||(hora==='pico'?(h>=19&&h<=21):!(h>=19&&h<=21));
  const p=P.filter(o=>okDia(o.dia)&&okHora(o.hora)&&(mb==='all'||o.motoboy===mb));
  const v=V.filter(t=>okDia(t.dia)&&okHora(t.hora_saida)&&(mb==='all'||t.motoboy===mb));
- return{p,v};
+ const j=J.filter(t=>okDia(t.dia)&&(mb==='all'||t.motoboy===mb));
+ return{p,v,j};
 }
 
 function bars(el,data,{fmt=f1,color='var(--ver)',every=1}={}){
@@ -183,7 +191,7 @@ function rows(el,data,fmtV){const mx=Math.max(1e-9,...data.map(d=>d.v||0));
 
 let sortK='eh',sortDir=-1;
 function render(){
- const{p,v}=filtered();const n=p.length;
+ const{p,v,j}=filtered();const n=p.length;
  const t1=p.filter(o=>!o.x_desp).map(o=>o.t1),t3=p.filter(o=>!o.motivo).map(o=>o.t3),tot=p.filter(o=>!o.x_total).map(o=>o.total);
  const prz=p.filter(o=>o.no_prazo!=null),np=prz.length?prz.filter(o=>o.no_prazo).length/prz.length:null;
  const val=p.filter(o=>!o.motivo).length/(n||1);
@@ -208,9 +216,14 @@ function render(){
  const vv=v.filter(t=>!t.suspeita),rv=k=>med(vv.filter(t=>(k>=4?t.pedidos>=4:t.pedidos===k)).map(t=>t.rota));
  $('n_viagem').textContent=`Valor à direita: tempo total mediano · % no prazo. Tempo de rua mediano por viagem: 1 pedido ${fmin(rv(1))}, 2 pedidos ${fmin(rv(2))}, 3 pedidos ${fmin(rv(3))}.`;
 
+ const JD={};j.forEach(t=>{const d=JD[t.dia]||(JD[t.dia]={mb:0,h:0,e:0});d.mb++;d.h+=t.horas;d.e+=t.entregas});
+ const jd=Object.keys(JD).sort();
+ bars($('c_mbdia'),jd.map(d=>({label:lab(d),v:JD[d].mb,tip:`${DOW[new Date(d+'T12:00:00').getDay()]} ${lab(d)}: ${JD[d].mb} motoboys · ${f1(JD[d].h)} h · ${JD[d].e} entregas`})),{color:'var(--ink)'});
+ $('sub_mbdia').textContent=jd.length?`Média de ${f1(jd.reduce((s,d)=>s+JD[d].mb,0)/jd.length)} motoboys por dia. Conta quem fez pelo menos uma coleta.`:'';
+ document.querySelector('#t_jor tbody').innerHTML=[...jd].reverse().map(d=>{const x=JD[d];return `<tr><td>${DOW[new Date(d+'T12:00:00').getDay()]} ${lab(d)}</td><td>${x.mb}</td><td>${f1(x.h)}</td><td>${x.e}</td><td>${x.h?f1(x.e/x.h):'–'}</td><td>${f1(x.h/x.mb)}</td></tr>`}).join('')||'<tr><td colspan="6">Sem dados no filtro.</td></tr>';
  const M={};p.forEach(o=>{const m=M[o.motoboy]||(M[o.motoboy]={mb:o.motoboy,n:0,sus:0,tr:[],np:[],km:0});m.n++;if(o.motivo)m.sus++;else if(o.t3!=null)m.tr.push(o.t3);if(o.no_prazo!=null)m.np.push(o.no_prazo);m.km+=o.km||0});
- v.forEach(t=>{const m=M[t.motoboy];if(!m)return;m.rotaMin=(m.rotaMin||0)+(t.rota||0);m.hiat=(m.hiat||0)+(t.hiato||0)});
- let R=Object.values(M).filter(m=>m.n>=20).map(m=>{const h=((m.rotaMin||0)+(m.hiat||0))/60;return{mb:m.mb,n:m.n,h,eh:h?m.n/h:null,rota:h?(m.rotaMin||0)/60/h:null,tr:avg(m.tr),km:m.km,np:m.np.length?avg(m.np):null,sus:m.sus/m.n}});
+ j.forEach(t=>{const m=M[t.motoboy];if(!m)return;m.hT=(m.hT||0)+t.horas;m.hR=(m.hR||0)+t.rota});
+ let R=Object.values(M).filter(m=>m.n>=20).map(m=>{const h=m.hT||0;return{mb:m.mb,n:m.n,h,eh:h?m.n/h:null,rota:h?Math.min(1,(m.hR||0)/h):null,tr:avg(m.tr),km:m.km,np:m.np.length?avg(m.np):null,sus:m.sus/m.n}});
  R.sort((a,b)=>{const x=a[sortK],y=b[sortK];return typeof x==='string'?sortDir*x.localeCompare(y):sortDir*((x??-1)-(y??-1))});
  const conf=s=>s<.15?'<span class="badge b-ok">✓ confiável</span>':s<.35?'<span class="badge b-at">! atenção</span>':'<span class="badge b-no">✕ não confiável</span>';
  document.querySelector('#t_rank tbody').innerHTML=R.map(r=>`<tr><td>${esc(r.mb)}</td><td>${r.n}</td><td>${f1(r.h)}</td><td>${f1(r.eh)}</td><td>${pct(r.rota)}</td><td>${r.sus>=.35?'<span class="note">sem base</span>':fmin(r.tr)}</td><td>${Math.round(r.km)}</td><td>${pct(r.np)}</td><td>${pct(r.sus)} ${conf(r.sus)}</td></tr>`).join('')||'<tr><td colspan="9">Sem motoboys com 20+ entregas neste filtro.</td></tr>';
@@ -225,6 +238,7 @@ function render(){
  if(g1&&g2&&g2.length>=20){const d=med(g2.map(o=>o.total))-med(g1.map(o=>o.total));
   $('headline').textContent=`Pedido que sai em dupla leva ${Math.round(d)} min a mais; ${pct(1-val)} dos registros de rota não são confiáveis`;}
  else $('headline').textContent=`${n} pedidos no período · ${pct(np)} no prazo`;
+ $('lede_rank').textContent=`Horas trabalhadas = da primeira coleta até a última entrega do dia (viagem final limitada a ${LOJA?LOJA.teto_viagem_min:60} min). Trânsito só com registros válidos. A confiabilidade mostra quanto dos registros do motoboy é suspeito; quem não registra a rota aparece rápido sem ser.`;
  $('lede').textContent=`${LOJA?LOJA.nome:''} · ${lab(ds[0]||'')} a ${lab(ds[ds.length-1]||'')} · ${n.toLocaleString('pt-BR')} pedidos entregues, ${v.length.toLocaleString('pt-BR')} viagens. Tempo total mediano de ${fmin(med(tot))} e ${pct(np)} no prazo.`;
 }
 document.querySelectorAll('#t_rank th').forEach(th=>th.addEventListener('click',()=>{const k=th.dataset.k;sortDir=sortK===k?-sortDir:(k==='mb'?1:-1);sortK=k;
@@ -235,13 +249,15 @@ let LOJA=null;
 async function carregar(){
  $('headline').textContent='Carregando dados…';
  const sb=Painel.sb,id=LOJA.id;
- const [ped,vg]=await Promise.all([
+ const [ped,vg,jor]=await Promise.all([
   Painel.tudo(()=>sb.from('v_dash_pedidos').select('dia,hora,entregador,t1,t2,t3,total,no_prazo,motivo_exclusao,excluir_despacho,excluir_total,nv,pos,km,valor,canal,viagem').eq('loja_id',id).order('dia').order('viagem').order('pos')),
-  Painel.tudo(()=>sb.from('v_dash_viagens').select('viagem,dia,motoboy,hora_saida,pedidos,rota,hiato,ocioso,suspeita').eq('loja_id',id).order('viagem'))]);
+  Painel.tudo(()=>sb.from('v_dash_viagens').select('viagem,dia,motoboy,hora_saida,pedidos,rota,hiato,ocioso,suspeita').eq('loja_id',id).order('viagem')),
+  Painel.tudo(()=>sb.from('v_jornada').select('dia,entregador,entregas,viagens,horas_trabalhadas,horas_em_rota').eq('loja_id',id).order('dia').order('entregador'))]);
  const n=x=>x==null?null:+x;
  P=ped.map(r=>({dia:r.dia,hora:r.hora,motoboy:r.entregador,t1:n(r.t1),t2:n(r.t2),t3:n(r.t3),total:n(r.total),no_prazo:r.no_prazo==null?null:(r.no_prazo?1:0),
   motivo:MOTC[r.motivo_exclusao]||0,x_desp:r.excluir_despacho?1:0,x_total:r.excluir_total?1:0,nv:r.nv,pos:r.pos,km:n(r.km),valor:n(r.valor),canal:r.canal,viagem:r.viagem}));
  V=vg.map(r=>({viagem:r.viagem,dia:r.dia,motoboy:r.motoboy,hora_saida:r.hora_saida,pedidos:r.pedidos,rota:n(r.rota),hiato:n(r.hiato),ocioso:n(r.ocioso),suspeita:r.suspeita?1:0}));
+ J=jor.map(r=>({dia:r.dia,motoboy:r.entregador,entregas:r.entregas,viagens:r.viagens,horas:n(r.horas_trabalhadas)||0,rota:n(r.horas_em_rota)||0}));
  const mbs=[...new Set(P.map(o=>o.motoboy))].map(m=>[m,P.filter(o=>o.motoboy===m).length]).filter(x=>x[1]>=20).sort((a,b)=>b[1]-a[1]);
  $('f_mb').innerHTML='<option value="all">Todos</option>'+mbs.map(([m,c])=>`<option value="${esc(m)}">${esc(m)} (${c})</option>`).join('');
  if(!P.length){$('headline').textContent='Sem pedidos calculados para esta loja';$('lede').textContent='';return}
