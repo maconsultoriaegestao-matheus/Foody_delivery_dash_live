@@ -45,7 +45,7 @@ form.f .acts{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;marg
  <div class="top"><h2>Clientes e unidades</h2><div><button type="button" id="b_cli">Novo cliente</button> <button type="button" class="pri" id="b_loja">Nova unidade</button></div></div>
  <div id="lista"><p class="empty">Carregando…</p></div>
  <div class="top" style="margin-top:30px"><h2>Acessos</h2><button type="button" class="pri" id="b_user">Novo acesso</button></div>
- <div class="scroll"><table><thead><tr><th>E-mail</th><th>Vê</th><th></th></tr></thead><tbody id="acessos"></tbody></table></div>
+ <div class="scroll"><table><thead><tr><th>E-mail</th><th>Vê</th><th>Papel</th><th></th></tr></thead><tbody id="acessos"></tbody></table></div>
 </div>
 
 <dialog id="d_cli"><form class="f" id="f_cli"><h2 class="full">Novo cliente</h2>
@@ -86,6 +86,7 @@ form.f .acts{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;marg
  <label class="full">Pode ver<select name="escopo"><option value="loja">Uma unidade (ex.: TV da loja)</option><option value="cliente">Todas as unidades de um cliente</option><option value="global">Tudo (administrador)</option></select></label>
  <label class="full" id="w_ucli" hidden>Cliente<select name="cliente_id"></select></label>
  <label class="full" id="w_uloja">Unidade<select name="loja_id"></select></label>
+ <label class="full" id="w_papel">Papel<select name="papel"><option value="leitura">Leitura: painel ao vivo e dashboard (ex.: TV)</option><option value="gestor">Gestor: também regras de pagamento e fechamento dos entregadores</option></select></label>
  <div class="msg"></div><div class="acts"><button type="button" data-fechar>Cancelar</button><button class="pri">Criar</button></div></form></dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
@@ -115,7 +116,9 @@ async function carregar(){
  document.querySelectorAll('[data-mt]').forEach(b=>b.onclick=()=>abrirMetas(D.lojas.find(l=>l.id===b.dataset.mt)));
  const nomeCli=id=>(D.clientes.find(c=>c.id===id)||{}).nome||'?',nomeLoja=id=>{const l=D.lojas.find(x=>x.id===id);return l?`${nomeCli(l.cliente_id)} · ${l.nome}`:'?'};
  $('acessos').innerHTML=(D.acessos||[]).map(a=>`<tr><td>${esc(a.email)}</td><td>${a.loja_id?esc(nomeLoja(a.loja_id)):a.cliente_id?'Todas as unidades de '+esc(nomeCli(a.cliente_id)):'<b>Tudo (administrador)</b>'}</td>
-  <td><button class="lnk" data-rm='${esc(JSON.stringify({user_id:a.user_id,cliente_id:a.cliente_id,loja_id:a.loja_id}))}'>Remover</button></td></tr>`).join('')||'<tr><td colspan="3" class="empty">Nenhum acesso.</td></tr>';
+  <td>${a.papel==='admin'?'Administrador':`${a.papel==='gestor'?'<b>Gestor</b>':'Leitura'} <button class="lnk" data-pp='${esc(JSON.stringify({user_id:a.user_id,cliente_id:a.cliente_id,loja_id:a.loja_id,papel:a.papel==='gestor'?'leitura':'gestor'}))}'>${a.papel==='gestor'?'Tornar leitura':'Tornar gestor'}</button>`}</td>
+  <td><button class="lnk" data-rm='${esc(JSON.stringify({user_id:a.user_id,cliente_id:a.cliente_id,loja_id:a.loja_id}))}'>Remover</button></td></tr>`).join('')||'<tr><td colspan="4" class="empty">Nenhum acesso.</td></tr>';
+ document.querySelectorAll('[data-pp]').forEach(b=>b.onclick=async()=>{b.textContent='Salvando…';try{await Painel.admin('definir_papel',JSON.parse(b.dataset.pp));await carregar()}catch(e){b.textContent=e.message}});
  document.querySelectorAll('[data-rm]').forEach(b=>b.onclick=async()=>{b.textContent='Removendo…';try{await Painel.admin('remover_acesso',JSON.parse(b.dataset.rm));await carregar()}catch(e){b.textContent=e.message}});
  const opCli=(D.clientes||[]).map(c=>`<option value="${esc(c.id)}">${esc(c.nome)}</option>`).join('');
  $('f_loja').cliente_id.innerHTML=opCli;$('f_user').cliente_id.innerHTML=opCli;
@@ -158,7 +161,7 @@ $('f_metas').onsubmit=async e=>{e.preventDefault();const f=e.target;msg(f,'Salva
 $('b_cli').onclick=()=>{$('f_cli').reset();msg($('f_cli'),'');$('d_cli').showModal()};
 $('b_loja').onclick=()=>abrirLoja(null);
 $('b_user').onclick=()=>{$('f_user').reset();msg($('f_user'),'');ajEscopo();$('d_user').showModal()};
-const ajEscopo=()=>{const v=$('f_user').escopo.value;$('w_ucli').hidden=v!=='cliente';$('w_uloja').hidden=v!=='loja'};
+const ajEscopo=()=>{const v=$('f_user').escopo.value;$('w_ucli').hidden=v!=='cliente';$('w_uloja').hidden=v!=='loja';$('w_papel').hidden=v==='global'};
 $('f_user').escopo.onchange=ajEscopo;
 
 $('f_cli').onsubmit=async e=>{e.preventDefault();const f=e.target;msg(f,'Salvando…');
@@ -182,7 +185,7 @@ $('f_tok').onsubmit=async e=>{e.preventDefault();const f=e.target;msg(f,'Testand
   await carregar();setTimeout(()=>$('d_tok').close(),2200)}catch(x){msg(f,x.message,'err')}};
 
 $('f_user').onsubmit=async e=>{e.preventDefault();const f=e.target;msg(f,'Criando…');
- try{await Painel.admin('criar_usuario',{email:f.email.value.trim(),senha:f.senha.value,escopo:f.escopo.value,cliente_id:f.cliente_id.value,loja_id:f.loja_id.value});
+ try{await Painel.admin('criar_usuario',{email:f.email.value.trim(),senha:f.senha.value,escopo:f.escopo.value,papel:f.papel.value,cliente_id:f.cliente_id.value,loja_id:f.loja_id.value});
   $('d_user').close();await carregar()}catch(x){msg(f,x.message,'err')}};
 
 $('b_sair').onclick=()=>Painel.sair();

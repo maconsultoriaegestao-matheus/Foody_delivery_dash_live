@@ -143,7 +143,9 @@ Deno.serve(async (req) => {
 
       case "criar_usuario": {
         // escopo: global | cliente | loja
+        // papel: leitura (TV / só painéis) | gestor (também vê e fecha pagamentos dos entregadores)
         const { email, senha, escopo, cliente_id, loja_id } = b;
+        const papel = escopo === "global" ? "admin" : b.papel === "gestor" ? "gestor" : "leitura";
         if (!email || !senha || senha.length < 8) return json({ erro: "e-mail e senha (mín. 8 caracteres) obrigatórios" }, 400);
         let uid: string | undefined;
         const cr = await svc.auth.admin.createUser({ email, password: senha, email_confirm: true });
@@ -153,12 +155,23 @@ Deno.serve(async (req) => {
           if (!uid) return json({ erro: cr.error.message }, 400);
         } else uid = cr.data.user?.id;
         const acesso = {
-          user_id: uid, papel: escopo === "global" ? "admin" : "leitura",
+          user_id: uid, papel,
           cliente_id: escopo === "cliente" ? cliente_id : null, loja_id: escopo === "loja" ? loja_id : null,
         };
         const { error } = await svc.from("acessos").insert(acesso);
         if (error) return json({ erro: error.message }, 400);
         return json({ ok: true, user_id: uid });
+      }
+
+      case "definir_papel": {
+        const { user_id, cliente_id, loja_id } = b;
+        const papel = b.papel === "gestor" ? "gestor" : "leitura";
+        let q = svc.from("acessos").update({ papel }).eq("user_id", user_id).neq("papel", "admin");
+        q = cliente_id ? q.eq("cliente_id", cliente_id) : q.is("cliente_id", null);
+        q = loja_id ? q.eq("loja_id", loja_id) : q.is("loja_id", null);
+        const { error } = await q;
+        if (error) return json({ erro: error.message }, 400);
+        return json({ ok: true });
       }
 
       case "remover_acesso": {

@@ -43,13 +43,18 @@ function canal(notes?: string) {
   return n.includes("Localizer") || n.includes("IFOOD") ? "iFood" : n.includes("BRENDI") ? "Brendi" : "Direto";
 }
 
-// km rota estimado pela linha reta (calibrado com o relatório: rota ≈ 1,18 × raio + 0,55)
-function kmRota(p: any): number | null {
+// raio = distância em linha reta loja → cliente
+function kmRaio(p: any): number | null {
   const a = p?.collectionPoint?.coordinates, b = p?.deliveryPoint?.coordinates;
   if (!a || !b) return null;
   const r = Math.PI / 180, dLa = (b.lat - a.lat) * r, dLo = (b.lng - a.lng) * r;
   const h = Math.sin(dLa / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLo / 2) ** 2;
-  return Math.round((1.18 * 2 * 6371 * Math.asin(Math.sqrt(h)) + 0.55) * 100) / 100;
+  return Math.round(2 * 6371 * Math.asin(Math.sqrt(h)) * 100) / 100;
+}
+// km rota estimado pela linha reta (calibrado com o relatório: rota ≈ 1,18 × raio + 0,55)
+function kmRota(p: any): number | null {
+  const k = kmRaio(p);
+  return k == null ? null : Math.round((1.18 * k + 0.55) * 100) / 100;
 }
 
 // Pizzas no pedido a partir do texto dos itens ("1 x PIZZA BIG", "1 x 2 PIZZA GRANDES PROMOÇÃO",
@@ -76,7 +81,7 @@ function mapear(p: any, loja: string) {
     tipo_entregador: p.courier?.courierType ?? null,
     modo_despacho: p.despatchMode ?? null,
     valor_total: p.orderTotal ?? null, taxa_entrega: p.deliveryFee ?? null, taxa_entregador: p.courierFee ?? null,
-    km_rota: kmRota(p), qtd_pizzas: qtdPizzas(p.orderDetails),
+    km_rota: kmRota(p), km_raio: kmRaio(p), qtd_pizzas: qtdPizzas(p.orderDetails),
     aberto_em: p.date ?? null, pronto_em: p.readyDate ?? null, despachado_em: p.despatchDate ?? null,
     aceito_em: p.acceptanceDate ?? null, coletado_em: p.collectedDate ?? null, entregue_em: p.deliveryDate ?? null,
     finalizado_em: p.closedDate ?? null, prazo_em: p.deliveryDueDate ?? null, atualizado_em: p.updateDate ?? null,
