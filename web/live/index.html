@@ -55,7 +55,9 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--warn);outline-
 #festa{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(27,13,32,.8)}#festa canvas{position:absolute;inset:0;width:100%;height:100%}
 #festa .msg{position:relative;text-align:center;padding:24px 36px;border-radius:18px;background:var(--paper);color:var(--dark);box-shadow:0 20px 60px rgba(0,0,0,.5)}
 #festa .msg b{display:block;font-family:"Barlow Condensed",sans-serif;font-size:clamp(44px,7vw,110px);line-height:1;color:var(--acc)}#festa .msg span{display:block;font-size:clamp(20px,2.4vw,34px);margin-top:8px}
-@media(prefers-reduced-motion:no-preference){#festa .msg{animation:pulo .9s cubic-bezier(.2,1.6,.4,1)}}@keyframes pulo{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+#festa .msg{animation:pulo .9s cubic-bezier(.2,1.6,.4,1),pulsa 1.2s ease-in-out .9s infinite}@keyframes pulo{from{transform:scale(.4) rotate(-6deg);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes pulsa{50%{transform:scale(1.06)}}#festa .msg b{animation:brilho 1.2s linear infinite}@keyframes brilho{50%{color:var(--warn)}}
+#somaviso{position:fixed;left:14px;bottom:14px;z-index:55;background:var(--warn);color:#2a0f2e;font-weight:700;border-radius:999px;padding:10px 18px;font-size:16px;box-shadow:0 6px 20px rgba(0,0,0,.4);cursor:pointer;border:0}
 .fila{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;padding:12px max(2vw,14px) 0}
 .fila .vez{background:var(--acc);color:#2a0f2e;border-radius:12px;padding:8px 18px;display:flex;flex-direction:column;justify-content:center;min-width:240px}
 .fila .vez small{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}.fila .vez b{font-family:"Barlow Condensed",sans-serif;font-size:clamp(34px,3.4vw,52px);line-height:1}
@@ -86,6 +88,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--warn);outline-
 <section class="placar" id="placar"></section>
 <div class="sec"><span>Motoboys hoje</span><span id="metas"></span></div>
 <section class="riders" id="riders"></section>
+<button type="button" id="somaviso" hidden>🔇 Toque na tela uma vez para liberar o som da comemoração</button>
 <div id="festa" hidden><canvas id="confete"></canvas><div class="msg" role="alert"><b id="f_tit"></b><span id="f_sub"></span></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
 <script src="../shared/supa.js"></script>
@@ -156,7 +159,7 @@ function confete(ms){const cv=$('confete'),c=cv.getContext('2d');cv.width=innerW
   if(t<fim)requestAnimationFrame(q);else c.clearRect(0,0,cv.width,cv.height)})(performance.now())}
 let festaAte=0;
 function festa(tit,sub){$('f_tit').textContent=tit;$('f_sub').textContent=sub;$('festa').hidden=false;festaAte=Date.now()+9000;
- if(!matchMedia('(prefers-reduced-motion: reduce)').matches)confete(8000);fanfarra();
+ confete(8000);fanfarra();
  setTimeout(()=>{if(Date.now()>=festaAte)$('festa').hidden=true},9000)}
 function checarMeta(tipo,atual,meta,tit,sub){if(!meta||atual<meta)return;const k=`foody_festa_${LOJA.id}_${Painel.diaOperacional()}_${tipo}`;
  let ja=false;try{ja=localStorage.getItem(k)==='1';localStorage.setItem(k,'1')}catch(_){ja=!!window['__'+k];window['__'+k]=1}
@@ -292,9 +295,14 @@ async function iniciarLoja(){
 $('logo').innerHTML=Painel.SIMBOLO;
 $('b_sair').onclick=()=>Painel.sair();
 const somBtn=()=>{$('b_som').textContent='Som: '+(somOn?'ligado':'desligado');$('b_som').setAttribute('aria-pressed',somOn)};somBtn();
-$('b_som').onclick=()=>{somOn=!somOn;try{localStorage.setItem('foody_som',somOn?'1':'0')}catch(_){}somBtn();if(somOn){ctx();const a=AC;if(a){nota(784,a.currentTime+.02,.18);nota(1046.5,a.currentTime+.16,.3)}}};
+$('b_som').onclick=()=>{somOn=!somOn;try{localStorage.setItem('foody_som',somOn?'1':'0')}catch(_){}somBtn();if(somOn){ctx();const a=AC;if(a){nota(784,a.currentTime+.02,.18);nota(1046.5,a.currentTime+.16,.3)}}setTimeout(avisoSom,200)};
 // navegadores só liberam áudio após um toque/clique na página: o primeiro clique em qualquer lugar destrava
-document.addEventListener('click',()=>{if(somOn)ctx()},{once:true});
+// navegadores só tocam som depois de um toque/tecla na página: qualquer interação libera, e o aviso some
+const somLiberado=()=>!!AC&&AC.state==='running';
+const avisoSom=()=>{$('somaviso').hidden=!(somOn&&!somLiberado())};
+['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{if(somOn){ctx();setTimeout(avisoSom,200)}},{passive:true}));
+$('somaviso').onclick=()=>{ctx();const a=AC;if(a){nota(784,a.currentTime+.02,.18);nota(1046.5,a.currentTime+.16,.3)}setTimeout(avisoSom,200)};
+setInterval(avisoSom,1000);
 $('festa').onclick=()=>{$('festa').hidden=true};
 window.testarFesta=()=>festa('META DE VENDAS BATIDA!','Teste da comemoração');
 $('b_tela').onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}catch(_){}};
@@ -305,7 +313,8 @@ Painel.exigirLogin('Painel ao vivo').then(async()=>{
  LOJA=Painel.lojaPreferida(LOJAS);
  $('f_loja').innerHTML=LOJAS.map(l=>`<option value="${esc(l.id)}">${esc(l.nome)}</option>`).join('');$('f_loja').value=LOJA.id;$('f_loja').hidden=LOJAS.length<2;
  await iniciarLoja();
- if(location.hash==='#teste-festa')setTimeout(()=>festa('META DE VENDAS BATIDA!','Teste da comemoração'),800);
+ const testeHash=()=>{if(location.hash==='#teste-festa'){setTimeout(()=>festa('META DE VENDAS BATIDA!','Teste da comemoração'),800);history.replaceState(null,'',location.pathname)}};
+ testeHash();window.addEventListener('hashchange',testeHash);
  setInterval(render,1000);
  setInterval(()=>carregar().catch(()=>{}),60000); // rede de segurança caso o tempo real caia
 }).catch(e=>{$('sync').textContent='Erro: '+(e.message||e);$('sync').className='off'});
