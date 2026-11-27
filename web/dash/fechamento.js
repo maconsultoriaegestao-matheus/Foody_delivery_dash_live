@@ -95,9 +95,9 @@ async function carregar() {
 function porEntregador() {
   const M = {};
   for (const r of A.res) {
-    const m = M[r.entregador] || (M[r.entregador] = { nome: r.entregador, dias: 0, entregas: 0, km: 0, valor_entregas: 0, diaria: 0, ajuste_minimo: 0, extras: 0, descontos: 0, total: 0, alertas: 0, linhas: [] });
-    if (r.entregas > 0) m.dias++;
-    for (const k of ["entregas", "km", "valor_entregas", "diaria", "ajuste_minimo", "extras", "descontos", "total", "alertas"]) m[k] += +(r[k] || 0);
+    const m = M[r.entregador] || (M[r.entregador] = { nome: r.entregador, dias: 0, entregas: 0, km: 0, valor_entregas: 0, diaria: 0, ajuste_minimo: 0, extras: 0, descontos: 0, total: 0, alertas: 0, em_aberto: 0, linhas: [] });
+    if (r.entregas > 0 || r.em_aberto > 0 || +r.diaria > 0) m.dias++;
+    for (const k of ["entregas", "km", "valor_entregas", "diaria", "ajuste_minimo", "extras", "descontos", "total", "alertas", "em_aberto"]) m[k] += +(r[k] || 0);
     m.linhas.push(r);
   }
   return Object.values(M).sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome));
@@ -121,7 +121,7 @@ function desenhar() {
   est += `<button type="button" id="b_imp" ${E.length ? "" : "disabled"}>Imprimir</button>`;
   $("fx_estado").innerHTML = est;
 
-  $("fx_kpis").innerHTML = [["Entregadores", E.filter((m) => m.entregas).length, MODO === "dia" ? "trabalharam no dia" : `${tot("dias")} diárias na semana`],
+  $("fx_kpis").innerHTML = [["Entregadores", E.filter((m) => m.dias).length, MODO === "dia" ? (tot("em_aberto") && !fechado ? `trabalharam no dia · ${tot("em_aberto")} entregas em rota` : "trabalharam no dia") : `${tot("dias")} diárias na semana`],
     ["Entregas", tot("entregas").toLocaleString("pt-BR"), `${nf(tot("km"), 0)} km no total`],
     ["Por entrega", R$(tot("valor_entregas")), `diárias ${R$(tot("diaria"))}`],
     ["Total a pagar", R$(totalGeral), tot("extras") || tot("descontos") ? `extras ${R$(tot("extras"))} · descontos ${R$(tot("descontos"))}` : "sem lançamentos"]]
@@ -139,7 +139,7 @@ function desenhar() {
   // tabela
   $("fx_tab").innerHTML = E.map((m) => {
     const id = encodeURIComponent(m.nome), ab = ABERTO.has(m.nome);
-    return `<tr><td><b>${esc(m.nome)}</b>${m.alertas ? ` <span class="badge b-at" title="entregas com aviso">${m.alertas} aviso${m.alertas > 1 ? "s" : ""}</span>` : ""}</td>
+    return `<tr><td><b>${esc(m.nome)}</b>${m.em_aberto && !fechado ? ` <span class="badge b-at" title="pedidos coletados ainda não concluídos: entram no valor quando concluídos">${m.em_aberto} em rota</span>` : ""}${m.alertas ? ` <span class="badge b-at" title="entregas com aviso">${m.alertas} aviso${m.alertas > 1 ? "s" : ""}</span>` : ""}</td>
       <td>${m.dias}</td><td>${m.entregas}</td><td>${nf(m.km)}</td><td>${R$(m.diaria)}</td><td>${R$(m.valor_entregas)}</td>
       <td>${m.ajuste_minimo ? R$(m.ajuste_minimo) : "–"}</td><td>${m.extras ? R$(m.extras) : "–"}</td><td>${m.descontos ? "−" + R$(m.descontos) : "–"}</td>
       <td><b>${R$(m.total)}</b></td>
