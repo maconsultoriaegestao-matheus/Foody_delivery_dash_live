@@ -195,8 +195,11 @@ function cardMb(m,now){
  return `<article class="card mbc ${cls}"><div class="top"><span class="id nm">${esc(m.mb)}</span><span class="t num">${mm(tempo)}</span></div>
  <div class="meta">${st}${sai}<span>${m.n} ${m.n===1?'entrega':'entregas'} hoje</span></div></article>`}
 
+// motoboy com pedido coletado e não entregue está na rua: não conta na fila mesmo com check-in
+function filaNaLoja(){const k=s=>String(s||'').trim().toLowerCase(),rua=new Set([...PED.values()].filter(o=>o.co&&!o.en&&o.mb&&!['cancelled','rejected'].includes(o.st)).map(o=>k(o.mb)));
+ return FILA.filter(f=>!rua.has(k(f.entregador)))}
 function renderFila(){
- const el=$('fila'),now=Date.now(),k=s=>String(s||'').trim().toLowerCase();
+ const el=$('fila'),now=Date.now(),k=s=>String(s||'').trim().toLowerCase(),FILA=filaNaLoja();
  if(!FILA.length){el.innerHTML=`<div class="nada">${FILA_HOJE?'Fila da vez vazia: nenhum motoboy na loja.':'Fila da vez: nenhum check-in hoje (tablet da porta em /checkin).'}</div>`;return}
  // pedidos já despachados para o motoboy e ainda não coletados
  const carga=n=>[...PED.values()].filter(o=>o.de&&!o.co&&!o.en&&k(o.mb)===k(n)).length;
@@ -241,7 +244,7 @@ function render(){
  $('kpis').innerHTML=K.map(([l,v,c])=>`<div class="kpi ${c}"><small>${l}</small><div class="num">${v}</div></div>`).join('');
  const col=(t,list,html,nPed)=>`<section class="col"><h2>${t}<span class="num">${list.length}${nPed!=null&&nPed!==list.length?`<small style="font-size:15px;font-weight:500;color:var(--mute)"> · ${nPed} ped.</small>`:''}</span></h2>${list.length?list.map(html).join(''):'<div class="empty">Nenhum pedido</div>'}</section>`;
  // 4ª coluna: motoboys que não estão em rota — na loja (check-in, na ordem da fila) e voltando (pela hora da última entrega)
- const k=x=>String(x||'').trim().toLowerCase(),posFila=new Map(FILA.map((f,i)=>[k(f.entregador),[i+1,ms(f.chegou_em)]]));
+ const FILA=filaNaLoja(),k=x=>String(x||'').trim().toLowerCase(),posFila=new Map(FILA.map((f,i)=>[k(f.entregador),[i+1,ms(f.chegou_em)]]));
  const livres=Object.entries(vg).filter(([,vs])=>vs.length&&vs.every(v=>v.fim)).map(([mb,vs])=>{
   const last=Math.max(...vs.map(v=>v.fim)),f=posFila.get(k(mb))||[];
   return {mb,last,pos:f[0]||0,chegou:f[1]||null,pausa:!f[0]&&now-last>3600000,n:vs.flatMap(v=>v.ps).filter(o=>o.en).length,sai:esp.filter(o=>k(o.mb)===k(mb))}});
