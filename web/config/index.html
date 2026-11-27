@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Configurações do painel</title>
+<link href="https://fonts.googleapis.com/css2?family=Sofia+Sans+Condensed:wght@700;800&family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: ferramenta de administração, calma e direta
+   IDEA: ficha cadastral — cliente, unidades e quem acessa
+   PICTURE: a própria lista de unidades com o estado do coletor
+   COLOUR+TYPE: branco/preto com vermelhão só para ação principal; Sofia Sans Condensed + Instrument Sans
+   LAYOUT: uma coluna; clientes com suas unidades; acessos embaixo */
+:root{color-scheme:light dark;--bg:light-dark(#fff,#120d0b);--ink:light-dark(#141414,#f2eeec);--mute:light-dark(#5f5f5f,#a59c98);--line:light-dark(#e4e1df,#2e2623);
+--soft:light-dark(#f6f4f2,#1c1613);--ver:light-dark(#ff4a1c,#ff6a43);--good:#0aac23;--crit:#dc3c3d}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Instrument Sans",system-ui,sans-serif;overflow-x:clip}
+h1,h2{font-family:"Sofia Sans Condensed",sans-serif;font-weight:800;line-height:1.05;margin:0}
+h1{font-size:clamp(32px,4vw,46px)}h2{font-size:26px}
+.wrap{max-width:1100px;margin:0 auto;padding:clamp(22px,3vw,44px) max(4vw,16px)}
+.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:8px}
+.lede{color:var(--mute);margin:6px 0 24px;max-width:70ch}
+button,select,input{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;min-height:44px;padding:0 12px}
+button{cursor:pointer}button.pri{background:var(--ver);border-color:var(--ver);color:#fff;font-weight:600}
+button.lnk{border:0;background:none;color:var(--ver);padding:0 6px;min-height:36px}
+:focus-visible{outline:2px solid var(--ver);outline-offset:2px}
+.cli{border-top:2px solid var(--ink);padding:16px 0 26px}
+.cli .hd{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;font-size:15px}th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:13px;color:var(--mute);font-weight:600}
+.ok{color:light-dark(#0b6b1b,#5fdb73);font-weight:600}.no{color:light-dark(#a32222,#ff8a8a);font-weight:600}
+.sm{font-size:13px;color:var(--mute)}
+.scroll{overflow-x:auto}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);padding:22px;width:min(520px,94vw)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+form.f{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+form.f label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mute)}
+form.f .full{grid-column:1/-1}
+form.f .acts{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+.msg{grid-column:1/-1;font-size:14px;min-height:1.3em}.msg.err{color:var(--crit)}.msg.ok{color:light-dark(#0b6b1b,#5fdb73)}
+.empty{color:var(--mute);padding:14px 0}
+@media(max-width:600px){form.f{grid-template-columns:minmax(0,1fr)}table{font-size:13px}}
+</style></head><body>
+<div class="wrap">
+ <div class="top"><h1>Configurações</h1><div><a href="../" class="sm">Início</a> <button id="b_sair" type="button">Sair</button></div></div>
+ <p class="lede">Cada unidade tem o seu token Foody, as suas metas e a sua TV. O token é testado na Foody e guardado no cofre do servidor; depois de salvo, ele não aparece mais aqui.</p>
+ <div class="top"><h2>Clientes e unidades</h2><div><button type="button" id="b_cli">Novo cliente</button> <button type="button" class="pri" id="b_loja">Nova unidade</button></div></div>
+ <div id="lista"><p class="empty">Carregando…</p></div>
+ <div class="top" style="margin-top:30px"><h2>Acessos</h2><button type="button" class="pri" id="b_user">Novo acesso</button></div>
+ <div class="scroll"><table><thead><tr><th>E-mail</th><th>Vê</th><th></th></tr></thead><tbody id="acessos"></tbody></table></div>
+</div>
+
+<dialog id="d_cli"><form class="f" id="f_cli"><h2 class="full">Novo cliente</h2>
+ <label class="full">Nome do cliente<input name="nome" required placeholder="Ex.: Pitizza"></label>
+ <div class="msg"></div><div class="acts"><button type="button" data-fechar>Cancelar</button><button class="pri">Salvar</button></div></form></dialog>
+
+<dialog id="d_loja"><form class="f" id="f_loja"><h2 class="full" id="t_loja">Nova unidade</h2>
+ <input type="hidden" name="id">
+ <label class="full" id="w_cli">Cliente<select name="cliente_id" required></select></label>
+ <label class="full">Nome da unidade<input name="nome" required placeholder="Ex.: Pinheirinho"></label>
+ <label class="full" id="w_tok">Token Foody da unidade<input name="token" type="password" autocomplete="off" placeholder="Minha Conta → APIs e Hooks"></label>
+ <label>Meta até despacho (min)<input name="meta_despacho_min" type="number" min="1" value="15"></label>
+ <label>Meta espera p/ saída (min)<input name="meta_espera_min" type="number" min="1" value="5"></label>
+ <label>Meta trânsito (min)<input name="meta_transito_min" type="number" min="1" value="20"></label>
+ <label>Meta tempo total (min)<input name="meta_total_min" type="number" min="1" value="30"></label>
+ <label>Limite cozinha → "Verificar" (min)<input name="limite_cozinha_min" type="number" min="1" value="90"></label>
+ <label>Limite espera → "Verificar" (min)<input name="limite_espera_min" type="number" min="1" value="60"></label>
+ <label>Limite em rota → "Verificar" (min)<input name="limite_rota_min" type="number" min="1" value="60"></label>
+ <label>Situação<select name="ativa"><option value="true">Ativa</option><option value="false">Pausada</option></select></label>
+ <div class="msg"></div><div class="acts"><button type="button" data-fechar>Cancelar</button><button class="pri">Salvar</button></div></form></dialog>
+
+<dialog id="d_tok"><form class="f" id="f_tok"><h2 class="full">Trocar token</h2>
+ <input type="hidden" name="credencial_id"><p class="full sm" id="t_tok"></p>
+ <label class="full">Novo token Foody<input name="token" type="password" autocomplete="off" required></label>
+ <div class="msg"></div><div class="acts"><button type="button" data-fechar>Cancelar</button><button class="pri">Testar e salvar</button></div></form></dialog>
+
+<dialog id="d_user"><form class="f" id="f_user"><h2 class="full">Novo acesso</h2>
+ <label class="full">E-mail<input name="email" type="email" required autocomplete="off"></label>
+ <label class="full">Senha inicial (mín. 8)<input name="senha" type="password" minlength="8" required autocomplete="new-password"></label>
+ <label class="full">Pode ver<select name="escopo"><option value="loja">Uma unidade (ex.: TV da loja)</option><option value="cliente">Todas as unidades de um cliente</option><option value="global">Tudo (administrador)</option></select></label>
+ <label class="full" id="w_ucli" hidden>Cliente<select name="cliente_id"></select></label>
+ <label class="full" id="w_uloja">Unidade<select name="loja_id"></select></label>
+ <div class="msg"></div><div class="acts"><button type="button" data-fechar>Cancelar</button><button class="pri">Criar</button></div></form></dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<script src="../shared/supa.js"></script>
+<script>
+{
+const $=id=>document.getElementById(id), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let D=null;
+const quando=t=>{if(!t)return'–';const s=(Date.now()-new Date(t).getTime())/1000;return s<90?`há ${Math.round(s)} s`:s<5400?`há ${Math.round(s/60)} min`:new Date(t).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})};
+const msg=(f,t,tipo)=>{const m=f.querySelector('.msg');m.textContent=t;m.className='msg '+(tipo||'')};
+document.querySelectorAll('[data-fechar]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+
+async function carregar(){
+ D=await Painel.admin('listar');
+ const cred=Object.fromEntries((D.credenciais||[]).map(c=>[c.id,c])),est=Object.fromEntries((D.estado||[]).map(e=>[e.loja_id,e]));
+ $('lista').innerHTML=(D.clientes||[]).map(c=>{const ls=(D.lojas||[]).filter(l=>l.cliente_id===c.id);
+  return `<section class="cli"><div class="hd"><h2>${esc(c.nome)}</h2><span class="sm">${ls.length} ${ls.length===1?'unidade':'unidades'}</span></div>
+  ${ls.length?`<div class="scroll"><table><thead><tr><th>Unidade</th><th>Token Foody</th><th>Coletor</th><th>Metas (despacho · espera · trânsito · total)</th><th></th></tr></thead><tbody>
+  ${ls.map(l=>{const cr=cred[l.credencial_id]||{},e=est[l.id]||{};
+   const tok=cr.token_definido?`<span class="ok">✓ definido</span><div class="sm">${quando(cr.token_definido_em)}</div>`:'<span class="no">✕ falta o token</span>';
+   const col=!l.ativa?'<span class="sm">pausada</span>':e.ultimo_erro?`<span class="no">✕ erro</span><div class="sm">${esc(e.ultimo_erro)}</div>`:e.ultimo_sucesso?`<span class="ok">✓ ok</span><div class="sm">${quando(e.ultimo_sucesso)}</div>`:'<span class="sm">aguardando 1º ciclo</span>';
+   return `<tr><td><b>${esc(l.nome)}</b></td><td>${tok}</td><td>${col}</td><td>${l.meta_despacho_min} · ${l.meta_espera_min} · ${l.meta_transito_min} · ${l.meta_total_min} min</td>
+   <td style="white-space:nowrap"><button class="lnk" data-ed="${esc(l.id)}">Editar</button><button class="lnk" data-tk="${esc(l.id)}">${cr.token_definido?'Trocar token':'Definir token'}</button></td></tr>`}).join('')}
+  </tbody></table></div>`:'<p class="empty">Nenhuma unidade ainda.</p>'}</section>`}).join('')||'<p class="empty">Nenhum cliente cadastrado.</p>';
+ document.querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>abrirLoja(D.lojas.find(l=>l.id===b.dataset.ed)));
+ document.querySelectorAll('[data-tk]').forEach(b=>b.onclick=()=>abrirToken(D.lojas.find(l=>l.id===b.dataset.tk)));
+ const nomeCli=id=>(D.clientes.find(c=>c.id===id)||{}).nome||'?',nomeLoja=id=>{const l=D.lojas.find(x=>x.id===id);return l?`${nomeCli(l.cliente_id)} · ${l.nome}`:'?'};
+ $('acessos').innerHTML=(D.acessos||[]).map(a=>`<tr><td>${esc(a.email)}</td><td>${a.loja_id?esc(nomeLoja(a.loja_id)):a.cliente_id?'Todas as unidades de '+esc(nomeCli(a.cliente_id)):'<b>Tudo (administrador)</b>'}</td>
+  <td><button class="lnk" data-rm='${esc(JSON.stringify({user_id:a.user_id,cliente_id:a.cliente_id,loja_id:a.loja_id}))}'>Remover</button></td></tr>`).join('')||'<tr><td colspan="3" class="empty">Nenhum acesso.</td></tr>';
+ document.querySelectorAll('[data-rm]').forEach(b=>b.onclick=async()=>{b.textContent='Removendo…';try{await Painel.admin('remover_acesso',JSON.parse(b.dataset.rm));await carregar()}catch(e){b.textContent=e.message}});
+ const opCli=(D.clientes||[]).map(c=>`<option value="${esc(c.id)}">${esc(c.nome)}</option>`).join('');
+ $('f_loja').cliente_id.innerHTML=opCli;$('f_user').cliente_id.innerHTML=opCli;
+ $('f_user').loja_id.innerHTML=(D.lojas||[]).map(l=>`<option value="${esc(l.id)}">${esc(nomeCli(l.cliente_id)+' · '+l.nome)}</option>`).join('');
+}
+
+function abrirLoja(l){const f=$('f_loja');f.reset();msg(f,'');
+ $('t_loja').textContent=l?'Editar unidade':'Nova unidade';$('w_cli').hidden=!!l;$('w_tok').hidden=!!l;
+ f.id.value=l?l.id:'';
+ if(l)['nome','meta_despacho_min','meta_espera_min','meta_transito_min','meta_total_min','limite_cozinha_min','limite_espera_min','limite_rota_min'].forEach(k=>f[k].value=l[k]);
+ f.ativa.value=l?String(l.ativa):'true';
+ if(!D.clientes.length)msg(f,'Cadastre um cliente primeiro.','err');
+ $('d_loja').showModal()}
+function abrirToken(l){const f=$('f_tok');f.reset();msg(f,'');f.credencial_id.value=l.credencial_id;$('t_tok').textContent=`Unidade: ${l.nome}. O token novo substitui o atual assim que a Foody aceitar.`;$('d_tok').showModal()}
+
+$('b_cli').onclick=()=>{$('f_cli').reset();msg($('f_cli'),'');$('d_cli').showModal()};
+$('b_loja').onclick=()=>abrirLoja(null);
+$('b_user').onclick=()=>{$('f_user').reset();msg($('f_user'),'');ajEscopo();$('d_user').showModal()};
+const ajEscopo=()=>{const v=$('f_user').escopo.value;$('w_ucli').hidden=v!=='cliente';$('w_uloja').hidden=v!=='loja'};
+$('f_user').escopo.onchange=ajEscopo;
+
+$('f_cli').onsubmit=async e=>{e.preventDefault();const f=e.target;msg(f,'Salvando…');
+ try{await Painel.admin('salvar_cliente',{nome:f.nome.value});$('d_cli').close();await carregar()}catch(x){msg(f,x.message,'err')}};
+
+$('f_loja').onsubmit=async e=>{e.preventDefault();const f=e.target;msg(f,'Salvando…');
+ const n=k=>+f[k].value,dados={nome:f.nome.value,ativa:f.ativa.value==='true',meta_despacho_min:n('meta_despacho_min'),meta_espera_min:n('meta_espera_min'),
+  meta_transito_min:n('meta_transito_min'),meta_total_min:n('meta_total_min'),limite_cozinha_min:n('limite_cozinha_min'),limite_espera_min:n('limite_espera_min'),limite_rota_min:n('limite_rota_min')};
+ try{
+  if(f.id.value){await Painel.admin('salvar_loja',{id:f.id.value,...dados})}
+  else{const r=await Painel.admin('salvar_loja',{cliente_id:f.cliente_id.value,...dados});
+   if(f.token.value.trim()){msg(f,'Testando o token na Foody…');const t=await Painel.admin('definir_token',{credencial_id:r.loja.credencial_id,token:f.token.value});
+    msg(f,`Token aceito: ${t.teste.pedidos_3_dias} pedidos nos últimos 3 dias.`,'ok');await new Promise(s=>setTimeout(s,1500))}}
+  $('d_loja').close();await carregar()
+ }catch(x){msg(f,x.message,'err');await carregar()}};
+
+$('f_tok').onsubmit=async e=>{e.preventDefault();const f=e.target;msg(f,'Testando o token na Foody…');
+ try{const t=await Painel.admin('definir_token',{credencial_id:f.credencial_id.value,token:f.token.value});
+  const pts=(t.teste.pontos_coleta||[]).map(p=>p.nome).filter(Boolean).join(', ');
+  msg(f,`Token aceito e salvo: ${t.teste.pedidos_3_dias} pedidos nos últimos 3 dias${pts?' · ponto de coleta: '+pts:''}.`,'ok');
+  await carregar();setTimeout(()=>$('d_tok').close(),2200)}catch(x){msg(f,x.message,'err')}};
+
+$('f_user').onsubmit=async e=>{e.preventDefault();const f=e.target;msg(f,'Criando…');
+ try{await Painel.admin('criar_usuario',{email:f.email.value.trim(),senha:f.senha.value,escopo:f.escopo.value,cliente_id:f.cliente_id.value,loja_id:f.loja_id.value});
+  $('d_user').close();await carregar()}catch(x){msg(f,x.message,'err')}};
+
+$('b_sair').onclick=()=>Painel.sair();
+Painel.exigirLogin('Configurações').then(carregar).catch(e=>{$('lista').innerHTML=`<p class="empty">${esc(e.message)}</p>`});
+setInterval(()=>{if(D&&!document.querySelector('dialog[open]'))carregar().catch(()=>{})},30000);
+}
+</script></body></html>

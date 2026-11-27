@@ -1,13 +1,15 @@
 // Coletor Foody Delivery: chamado a cada 30 s pelo Supabase Cron.
+// Percorre as CREDENCIAIS (um token Foody cada) e grava os pedidos na unidade correspondente.
 // Só leitura na Foody. Não grava nome, telefone, e-mail nem endereço do cliente final.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const FOODY = "https://app.foodydelivery.com/rest/1.2";
-const JANELA_H = 10;            // horas para trás na listagem
-const PAUSA_429_MS = 120_000;   // pausa do rastreio após um 429
+const JANELA_H = 10;             // horas para trás na listagem
+const PAUSA_429_MS = 120_000;    // pausa do rastreio após um 429
 const INTERVALO_MIN_MS = 20_000; // proteção: ignora chamadas a menos de 20 s da anterior
-const LOTE = 5;                 // lojas em paralelo
+const LOTE = 5;                  // credenciais em paralelo
+const ATIVOS = ["open", "ready", "dispatched", "accepted", "onGoing", "delivered"];
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
   auth: { persistSession: false },
@@ -81,31 +83,46 @@ function mapear(p: any, loja: string) {
   };
 }
 
-async function coletarLoja(loja: { id: string }) {
-  const agora = new Date();
-  const { data: est } = await sb.from("coletor_estado").select("*").eq("loja_id", loja.id).maybeSingle();
-  if (est?.ultima_execucao && agora.getTime() - new Date(est.ultima_execucao).getTime() < INTERVALO_MIN_MS) {
-    return { loja: loja.id, pulado: "intervalo" };
-  }
-  const estado: Record<string, unknown> = { loja_id: loja.id, ultima_execucao: agora.toISOString(), total_429: est?.total_429 ?? 0 };
-  const salvar = async (extra: Record<string, unknown>) =>
-    await sb.from("coletor_estado").upsert({ ...estado, ...extra }, { onConflict: "loja_id" });
+type Cred = { id: string; rastreio_pausado_ate: string | null; total_429: number; ultima_execucao: string | null };
+type Loja = { id: string; collection_point_id: string | null };
 
-  const { data: token } = await sb.rpc("foody_token", { p_loja: loja.id });
-  if (!token) { await salvar({ ultimo_erro: "sem token no Vault" }); return { loja: loja.id, erro: "sem token" }; }
+async function coletarCredencial(cred: Cred, lojas: Loja[]) {
+  const agora = new Date();
+  if (cred.ultima_execucao && agora.getTime() - new Date(cred.ultima_execucao).getTime() < INTERVALO_MIN_MS) {
+    return { credencial: cred.id, pulado: "intervalo" };
+  }
+  const estadoCred: Record<string, unknown> = { ultima_execucao: agora.toISOString() };
+  // grava estado na credencial e nas unidades dela (o painel ao vivo lê coletor_estado da unidade)
+  const fim = async (erro: string | null, ok = false) => {
+    const t = new Date().toISOString();
+    await sb.from("credenciais_foody").update({ ...estadoCred, ultimo_erro: erro, ...(ok ? { ultimo_sucesso: t } : {}) }).eq("id", cred.id);
+    const est = lojas.map((l) => ({ loja_id: l.id, ultima_execucao: agora.toISOString(), ultimo_erro: erro, ...(ok ? { ultimo_sucesso: t } : {}) }));
+    if (est.length) await sb.from("coletor_estado").upsert(est, { onConflict: "loja_id" });
+  };
+  if (!lojas.length) { await fim("credencial sem unidade vinculada"); return { credencial: cred.id, erro: "sem unidade" }; }
+
+  const { data: token } = await sb.rpc("foody_token_cred", { p_cred: cred.id });
+  if (!token) { await fim("sem token no Vault"); return { credencial: cred.id, erro: "sem token" }; }
+
+  // unidade de cada pedido: única unidade da credencial, ou pelo ponto de coleta
+  const lojaDo = (p: any): string | null => {
+    if (lojas.length === 1) return lojas[0].id;
+    const cp = p?.collectionPoint?.id != null ? String(p.collectionPoint.id) : null;
+    return lojas.find((l) => l.collection_point_id === cp)?.id ?? null;
+  };
 
   // 1) Listagem paginada
   const pedidos: any[] = [];
   let cursor = new Date(agora.getTime() - JANELA_H * 3600e3);
-  const fim = new Date(agora.getTime() + 5 * 60e3);
+  const ate = new Date(agora.getTime() + 5 * 60e3);
   let rota = "/orders";
   for (let i = 0; i < 5; i++) {
-    const q = `?startDate=${encodeURIComponent(fmt(cursor))}&endDate=${encodeURIComponent(fmt(fim))}`;
+    const q = `?startDate=${encodeURIComponent(fmt(cursor))}&endDate=${encodeURIComponent(fmt(ate))}`;
     let r = await foody(token, "GET", rota + q);
     if (r.status === 404 && rota === "/orders") { rota = "/orders/"; r = await foody(token, "GET", rota + q); }
     if (r.status !== 200) {
-      await salvar({ ultimo_erro: `listagem HTTP ${r.status}: ${String(JSON.stringify(r.data)).slice(0, 200)}` });
-      return { loja: loja.id, erro: `listagem ${r.status}` };
+      await fim(`listagem HTTP ${r.status}: ${String(JSON.stringify(r.data)).slice(0, 200)}`);
+      return { credencial: cred.id, erro: `listagem ${r.status}` };
     }
     const lote = lista(r.data);
     pedidos.push(...lote);
@@ -114,9 +131,9 @@ async function coletarLoja(loja: { id: string }) {
   }
 
   // 1b) Pedidos ainda abertos no banco que saíram da janela: confere com checkupdates e busca o detalhe se mudou
+  const ids = lojas.map((l) => l.id);
   const naJanela = new Set(pedidos.map((p) => p?.uid));
-  const { data: abertos } = await sb.from("pedidos").select("uid,status").eq("loja_id", loja.id).eq("origem", "api")
-    .in("status", ["open", "ready", "dispatched", "accepted", "onGoing", "delivered"]);
+  const { data: abertos } = await sb.from("pedidos").select("uid,status").in("loja_id", ids).eq("origem", "api").in("status", ATIVOS);
   const fora = (abertos || []).filter((a: any) => !naJanela.has(a.uid)).slice(0, 100);
   if (fora.length) {
     const cu = await foody(token, "POST", "/orders/checkupdates", fora.map((a: any) => a.uid));
@@ -129,63 +146,74 @@ async function coletarLoja(loja: { id: string }) {
   }
 
   // 2) Gravação + eventos de status
-  const linhas = pedidos.filter((p) => p?.uid).map((p) => mapear(p, loja.id));
+  let semUnidade = 0;
+  const linhas = pedidos.filter((p) => p?.uid).map((p) => {
+    const l = lojaDo(p);
+    if (!l) semUnidade++;
+    return l ? mapear(p, l) : null;
+  }).filter(Boolean) as ReturnType<typeof mapear>[];
   let eventos: any[] = [];
   if (linhas.length) {
     const { data: atuais } = await sb.from("pedidos").select("uid,status").in("uid", linhas.map((l) => l.uid));
     const antes = new Map((atuais || []).map((a: any) => [a.uid, a.status]));
     eventos = linhas.filter((l) => antes.get(l.uid) !== l.status).map((l) => ({
-      uid: l.uid, loja_id: loja.id, status_anterior: antes.get(l.uid) ?? null, status_novo: l.status,
+      uid: l.uid, loja_id: l.loja_id, status_anterior: antes.get(l.uid) ?? null, status_novo: l.status,
       atualizado_api: l.atualizado_em, fonte: "polling",
     }));
     const up = await sb.from("pedidos").upsert(linhas, { onConflict: "uid" });
-    if (up.error) { await salvar({ ultimo_erro: "gravação: " + up.error.message }); return { loja: loja.id, erro: up.error.message }; }
+    if (up.error) { await fim("gravação: " + up.error.message); return { credencial: cred.id, erro: up.error.message }; }
     if (eventos.length) await sb.from("eventos_status").insert(eventos);
   }
 
-  // 3) Rastreio: 1 pedido em rota por ciclo, em rodízio, com pausa após 429
+  // 3) Rastreio: 1 pedido em rota por ciclo e por credencial, em rodízio, com pausa após 429
   let rastreio = "sem pedidos em rota";
-  const emRota = linhas.filter((l) => l.status === "onGoing").map((l) => l.uid).sort();
-  const pausado = est?.rastreio_pausado_ate && new Date(est.rastreio_pausado_ate) > agora;
+  const emRota = linhas.filter((l) => l.status === "onGoing").sort((a, b) => a.uid.localeCompare(b.uid));
+  const pausado = cred.rastreio_pausado_ate && new Date(cred.rastreio_pausado_ate) > agora;
   if (emRota.length && pausado) rastreio = "pausado";
   else if (emRota.length) {
-    const uid = emRota[Math.floor(agora.getTime() / 30_000) % emRota.length];
-    const r = await foody(token, "GET", `/orders/tracking/${uid}`);
+    const alvo = emRota[Math.floor(agora.getTime() / 30_000) % emRota.length];
+    const r = await foody(token, "GET", `/orders/tracking/${alvo.uid}`);
     const loc = r.data?.courierLocationCoordinates;
     if (r.status === 429) {
-      estado.rastreio_pausado_ate = new Date(agora.getTime() + PAUSA_429_MS).toISOString();
-      estado.total_429 = (est?.total_429 ?? 0) + 1;
+      estadoCred.rastreio_pausado_ate = new Date(agora.getTime() + PAUSA_429_MS).toISOString();
+      estadoCred.total_429 = (cred.total_429 ?? 0) + 1;
       rastreio = "429, pausado";
     } else if (r.status === 200 && loc?.lat != null) {
-      await sb.from("rastreio").insert({ uid, loja_id: loja.id, lat: loc.lat, lng: loc.lng });
+      await sb.from("rastreio").insert({ uid: alvo.uid, loja_id: alvo.loja_id, lat: loc.lat, lng: loc.lng });
       rastreio = "ok";
     } else rastreio = `HTTP ${r.status}`;
   }
 
   // 4) Recalcula métricas do dia quando algum pedido termina
-  const terminou = eventos.some((e) => ["delivered", "closed", "cancelled", "rejected"].includes(e.status_novo));
-  let erroMetricas: string | null = null;
-  if (terminou) {
-    const { data: dias } = await sb.from("pedidos").select("dia").in("uid", eventos.map((e) => e.uid));
-    for (const d of new Set((dias || []).map((x: any) => x.dia))) {
-      const { error } = await sb.rpc("recalcular_metricas", { p_loja: loja.id, p_dia: d });
-      if (error) erroMetricas = `métricas ${d}: ${error.message}`;
+  const terminou = eventos.filter((e) => ["delivered", "closed", "cancelled", "rejected"].includes(e.status_novo));
+  let erro: string | null = semUnidade ? `${semUnidade} pedidos sem unidade (ponto de coleta não vinculado)` : null;
+  if (terminou.length) {
+    const { data: dias } = await sb.from("pedidos").select("loja_id,dia").in("uid", terminou.map((e) => e.uid));
+    const pares = new Set((dias || []).map((x: any) => `${x.loja_id}|${x.dia}`));
+    for (const par of pares) {
+      const [loja, dia] = par.split("|");
+      const { error } = await sb.rpc("recalcular_metricas", { p_loja: loja, p_dia: dia });
+      if (error) erro = `métricas ${dia}: ${error.message}`;
     }
   }
 
-  await salvar({ ultimo_sucesso: new Date().toISOString(), ultimo_erro: erroMetricas });
-  return { loja: loja.id, pedidos: linhas.length, eventos: eventos.length, rastreio, recalculou: terminou };
+  await fim(erro, true);
+  return { credencial: cred.id, pedidos: linhas.length, eventos: eventos.length, rastreio, recalculou: terminou.length > 0 };
 }
 
 Deno.serve(async () => {
-  const { data: lojas, error } = await sb.from("lojas").select("id").eq("ativa", true);
-  if (error) return new Response(JSON.stringify({ erro: error.message }), { status: 500 });
+  const [{ data: creds, error: e1 }, { data: lojas, error: e2 }] = await Promise.all([
+    sb.from("credenciais_foody").select("id,rastreio_pausado_ate,total_429,ultima_execucao").eq("ativa", true).eq("token_definido", true),
+    sb.from("lojas").select("id,credencial_id,collection_point_id").eq("ativa", true),
+  ]);
+  if (e1 || e2) return new Response(JSON.stringify({ erro: (e1 || e2)!.message }), { status: 500 });
   const out: unknown[] = [];
-  for (let i = 0; i < (lojas || []).length; i += LOTE) {
-    const r = await Promise.allSettled(lojas!.slice(i, i + LOTE).map(coletarLoja));
+  for (let i = 0; i < (creds || []).length; i += LOTE) {
+    const r = await Promise.allSettled(creds!.slice(i, i + LOTE).map((c: Cred) =>
+      coletarCredencial(c, (lojas || []).filter((l: any) => l.credencial_id === c.id))));
     out.push(...r.map((x) => (x.status === "fulfilled" ? x.value : { erro: String(x.reason) })));
   }
-  return new Response(JSON.stringify({ em: new Date().toISOString(), lojas: out }), {
+  return new Response(JSON.stringify({ em: new Date().toISOString(), credenciais: out }), {
     headers: { "Content-Type": "application/json" },
   });
 });

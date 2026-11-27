@@ -41,9 +41,11 @@
   }
 
   async function lojas() {
-    const { data, error } = await sb.from("lojas").select("*").eq("ativa", true).order("nome");
+    const { data, error } = await sb.from("lojas").select("*, clientes(nome)").eq("ativa", true).order("nome");
     if (error) throw error;
-    return data || [];
+    // nome exibido: "Cliente · Unidade"
+    return (data || []).map((l) => ({ ...l, unidade: l.nome, nome: l.clientes?.nome ? `${l.clientes.nome} · ${l.nome}` : l.nome }))
+      .sort((a, b) => a.nome.localeCompare(b.nome));
   }
 
   function lojaPreferida(lista) {
@@ -64,6 +66,17 @@
     return out;
   }
 
+  // chama a função de administração (só administradores)
+  async function admin(acao, dados = {}) {
+    const { data, error } = await sb.functions.invoke("admin", { body: { acao, ...dados } });
+    if (error) {
+      let msg = error.message;
+      try { const j = await error.context.json(); msg = j.erro || msg; } catch (_) {}
+      throw new Error(msg);
+    }
+    return data;
+  }
+
   async function sair() { await sb.auth.signOut(); location.reload(); }
 
   // dia operacional (corte às 05h, fuso de São Paulo)
@@ -72,5 +85,5 @@
     return sp.toISOString().slice(0, 10);
   }
 
-  window.Painel = { sb, exigirLogin, lojas, lojaPreferida, guardarLoja, tudo, sair, diaOperacional };
+  window.Painel = { sb, exigirLogin, lojas, lojaPreferida, guardarLoja, tudo, sair, diaOperacional, admin };
 })();
