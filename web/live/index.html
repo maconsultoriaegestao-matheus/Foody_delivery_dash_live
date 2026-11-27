@@ -98,7 +98,7 @@ a.inicio{display:inline-flex;align-items:center;gap:6px;font:inherit;font-weight
 {
 const $=id=>document.getElementById(id), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ATIVOS=['open','ready','dispatched','accepted','onGoing'];
-const COLS='uid,numero,status,canal,entregador,aberto_em,despachado_em,coletado_em,entregue_em,finalizado_em,prazo_em,dia,qtd_pizzas,valor_total';
+const COLS='uid,numero,status,canal,entregador,aberto_em,despachado_em,aceito_em,coletado_em,entregue_em,finalizado_em,prazo_em,dia,qtd_pizzas,valor_total';
 let LOJA=null,LOJAS=[],M={},canal=null,ultimoColetor=null,METAS=[],FILA=[],FILA_HOJE=0;
 const PED=new Map();
 const ms=v=>v?new Date(v).getTime():null;
@@ -109,7 +109,7 @@ const somaPz=l=>{const v=l.map(o=>o.pz).filter(x=>x!=null);return v.length?v.red
 const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
 const lvl=(el,m)=>el>=m?'bad':el>=m*.8?'warn':'';
 function guardar(r){if(!r||!r.uid)return;PED.set(r.uid,{id:r.numero||'',uid:r.uid,st:r.status,canal:r.canal||'',mb:(r.entregador||'').trim(),
- ab:ms(r.aberto_em),de:ms(r.despachado_em),co:ms(r.coletado_em),en:ms(r.entregue_em)||(r.status==='closed'?ms(r.finalizado_em):null),due:ms(r.prazo_em),dia:r.dia,pz:r.qtd_pizzas,val:r.valor_total==null?0:+r.valor_total})}
+ ab:ms(r.aberto_em),de:ms(r.despachado_em),ac:ms(r.aceito_em),co:ms(r.coletado_em),en:ms(r.entregue_em)||(r.status==='closed'?ms(r.finalizado_em):null),due:ms(r.prazo_em),dia:r.dia,pz:r.qtd_pizzas,val:r.valor_total==null?0:+r.valor_total})}
 
 async function carregar(){
  PED.clear();const hoje=Painel.diaOperacional();
@@ -183,7 +183,9 @@ function grupo(g,stage,now){
  const lates=rest.filter(o=>o.due&&now>o.due),late=lates.length>0,atr=late?Math.max(...lates.map(o=>now-o.due)):0;
  const pct=Math.max(0,...rest.filter(o=>o.due).map(o=>Math.min(100,(now-o.ab)/(o.due-o.ab)*100)));
  const pz=somaPz(ps),ids=ps.map(o=>`<span${o.en?' style="text-decoration:line-through;opacity:.5"':''}>#${esc(o.id)}</span>`).join(' · ');
- const label=stage==='rota'?'em trânsito':'aguardando saída';
+ // na espera: mostra se o motoboy já aceitou no app (aceitou ≠ saiu; a saída é a coleta, "A caminho")
+ const ac=ps.filter(o=>o.ac).map(o=>o.ac);
+ const label=stage==='rota'?'em trânsito':ac.length===ps.length?`aceito ${hh(Math.max(...ac))} · falta sair (há ${mm(now-Math.max(...ac))})`:ac.length?`aceito ${ac.length} de ${ps.length} · falta sair`:'aguardando aceite do motoboy';
  return `<article class="card ${lvl(el,lim)} ${late?'late':''}"><div class="top"><span class="id num">${ids}</span><span class="t num">${mm(el)}</span></div>
  <div class="meta"><span><b>${esc(g.mb||'sem motoboy')}</b></span><span class="tag">${ps.length} ${ps.length>1?'entregas':'entrega'}</span>${pz?`<span class="tag">${pzTxt(pz)}</span>`:''}${stage==='rota'&&rest.length<ps.length?`<span class="tag">faltam ${rest.length}</span>`:''}<span>${label}</span>${late?`<span class="tag late">ATRASADO +${mm(atr)}</span>`:''}</div>
  <div class="bar"><i style="width:${pct.toFixed(0)}%"></i></div></article>`}
