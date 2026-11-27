@@ -97,6 +97,21 @@ async function coletarLoja(loja: { id: string }) {
     cursor = new Date(new Date(lote[lote.length - 1].date).getTime() + 1000);
   }
 
+  // 1b) Pedidos ainda abertos no banco que saíram da janela: confere com checkupdates e busca o detalhe se mudou
+  const naJanela = new Set(pedidos.map((p) => p?.uid));
+  const { data: abertos } = await sb.from("pedidos").select("uid,status").eq("loja_id", loja.id).eq("origem", "api")
+    .in("status", ["open", "ready", "dispatched", "accepted", "onGoing", "delivered"]);
+  const fora = (abertos || []).filter((a: any) => !naJanela.has(a.uid)).slice(0, 100);
+  if (fora.length) {
+    const cu = await foody(token, "POST", "/orders/checkupdates", fora.map((a: any) => a.uid));
+    const mudou = (Array.isArray(cu.data) ? cu.data : []).filter((x: any) =>
+      x?.uid && x.status && x.status !== fora.find((a: any) => a.uid === x.uid)?.status);
+    for (const x of mudou.slice(0, 10)) {
+      const d = await foody(token, "GET", `/orders/${x.uid}`);
+      if (d.status === 200 && d.data?.uid) pedidos.push(d.data);
+    }
+  }
+
   // 2) Gravação + eventos de status
   const linhas = pedidos.filter((p) => p?.uid).map((p) => mapear(p, loja.id));
   let eventos: any[] = [];

@@ -43,6 +43,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--warn);outline-
 .rider.rota{border-color:var(--ok)}.rider.loja{border-color:var(--warn)}.rider.pausa{border-color:var(--line)}
 .rider b{font-size:17px}.rider .st{display:flex;justify-content:space-between;align-items:baseline}.rider .st .num{font-size:30px}
 .rider .sm{color:var(--mute);font-size:13px;display:flex;gap:10px;flex-wrap:wrap}
+.chk{display:flex;flex-wrap:wrap;gap:8px;padding:0 max(2vw,14px) 12px}.chk .it{background:#2a2420;border:1px solid #5a4636;border-radius:8px;padding:6px 10px;font-size:14px}.chk .it b{font-family:"Barlow Condensed",sans-serif;font-size:20px;margin-inline-end:6px}.chk .it span{color:var(--mute)}
 .sec{padding:4px max(2vw,14px) 6px;color:var(--mute);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
 @media(max-width:1100px){.board{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.board{grid-template-columns:minmax(0,1fr)}.col{min-height:0}.clock{margin-inline-start:0}}
@@ -59,6 +60,8 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--warn);outline-
 </header>
 <section class="kpis" id="kpis"></section>
 <main class="board" id="board"></main>
+<div class="sec" id="h_chk" hidden><span>Verificar · fora do kanban</span><span>Pedidos acima do limite da etapa (provável baixa esquecida na Foody)</span></div>
+<section class="chk" id="chk"></section>
 <div class="sec"><span>Motoboys hoje</span><span id="metas"></span></div>
 <section class="riders" id="riders"></section>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
@@ -117,13 +120,22 @@ function render(){
  if(!LOJA)return;const now=Date.now();$('clock').textContent=hh(now);
  const hoje=Painel.diaOperacional();
  const todos=[...PED.values()].filter(o=>!['cancelled','rejected'].includes(o.st)&&o.ab);
- const dia=todos.filter(o=>o.dia===hoje||ATIVOS.includes(o.st));
+ // só o dia operacional; pedidos abertos de dias anteriores ficam fora
+ const dia0=todos.filter(o=>o.dia===hoje);
+ // desvios: etapa acima do limite (provável baixa esquecida)
+ const desvio=o=>{if(o.en)return null;if(o.co)return now-o.co>M.lr?['sem baixa',now-o.co]:null;if(o.de)return now-o.de>M.le?['aguardando',now-o.de]:null;return now-o.ab>M.lc?['na cozinha',now-o.ab]:null};
+ const chk=dia0.map(o=>[o,desvio(o)]).filter(x=>x[1]);
+ const fora=new Set(chk.map(x=>x[0].uid));
+ const dia=dia0.filter(o=>!fora.has(o.uid));
  const vg=viagens(dia);
  Object.values(vg).flat().forEach(v=>{const ord=[...v.ps].sort((a,b)=>(a.en||9e15)-(b.en||9e15));ord.forEach((o,i)=>{o.nv=v.ps.length;o.pos=i+1})});
  const coz=dia.filter(o=>!o.de&&!o.en).sort((a,b)=>a.ab-b.ab),
   esp=dia.filter(o=>o.de&&!o.co&&!o.en).sort((a,b)=>a.de-b.de),
   rota=dia.filter(o=>o.co&&!o.en).sort((a,b)=>a.co-b.co),
   ent=dia.filter(o=>o.en),rec=ent.filter(o=>now-o.en<30*60000).sort((a,b)=>b.en-a.en);
+ $('h_chk').hidden=!chk.length;
+ $('chk').innerHTML=chk.map(([o,[m,t]])=>`<div class="it"><b>#${esc(o.id)}</b>${esc(m)} há ${mm(t)} <span>${esc(o.mb||'')}</span></div>`).join('');
+ const pend={};chk.forEach(([o])=>{if(o.mb)(pend[o.mb]||(pend[o.mb]=[])).push('#'+o.id)});
  const ativos=[...coz,...esp,...rota],atras=ativos.filter(o=>o.due&&now>o.due).length;
  const despV=dia.filter(o=>o.de).map(o=>o.de-o.ab).filter(x=>x>=120000&&x<=3600000);
  const trV=ent.filter(o=>o.co).map(o=>o.en-o.co).filter(x=>x>=120000&&x<=3600000);
@@ -143,14 +155,15 @@ function render(){
   if(em){st='Em rota';cls='rota';el=now-em.sa}else if(last!==null){el=now-last;if(el>3600000){st='Pausa / fora';cls='pausa'}else{st='Retorno / na loja';cls='loja';ativo+=el}}else{st='—';cls='pausa';el=0}
   const n=vs.flatMap(v=>v.ps).filter(o=>o.en).length;
   return `<div class="rider ${cls}"><b>${esc(mb)}</b><div class="st"><span>${st}</span><span class="num">${mm(el)}</span></div>
-  <div class="sm"><span>${n} entregas</span><span>${(ativo/3600000).toFixed(1)} h ativas</span><span>${ativo>0?(n/(ativo/3600000)).toFixed(1):'–'}/h</span></div></div>`}).join('')||'<div class="empty">Nenhum motoboy saiu hoje</div>';
+  <div class="sm"><span>${n} entregas</span><span>${(ativo/3600000).toFixed(1)} h ativas</span><span>${ativo>0?(n/(ativo/3600000)).toFixed(1):'–'}/h</span>${pend[mb]?`<span style="color:var(--warn)">verificar ${esc(pend[mb].join(' '))}</span>`:''}</div></div>`}).join('')||'<div class="empty">Nenhum motoboy saiu hoje</div>';
  const ok=ultimoColetor&&ultimoColetor.ultimo_sucesso,idade=ok?now-ms(ultimoColetor.ultimo_sucesso):null;
  const s=$('sync');if(!ok){s.textContent='Coletor sem dados';s.className='off'}
  else if(idade>120000){s.textContent=`Sem atualização da Foody há ${Math.round(idade/60000)} min`;s.className='off'}
  else{s.textContent=`Ao vivo · Foody atualizado às ${new Date(ms(ultimoColetor.ultimo_sucesso)).toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo'})}`;s.className=''}
 }
 async function iniciarLoja(){
- M={desp:LOJA.meta_despacho_min*60000,esp:LOJA.meta_espera_min*60000,tr:LOJA.meta_transito_min*60000,tot:LOJA.meta_total_min*60000};
+ M={desp:LOJA.meta_despacho_min*60000,esp:LOJA.meta_espera_min*60000,tr:LOJA.meta_transito_min*60000,tot:LOJA.meta_total_min*60000,
+  lc:(LOJA.limite_cozinha_min||90)*60000,le:(LOJA.limite_espera_min||60)*60000,lr:(LOJA.limite_rota_min||60)*60000};
  $('nome').textContent=LOJA.nome+' · ao vivo';
  $('metas').textContent=`Metas: despacho ${LOJA.meta_despacho_min} min · espera ${LOJA.meta_espera_min} min · trânsito ${LOJA.meta_transito_min} min · total ${LOJA.meta_total_min} min`;
  await carregar();assinar();render();
