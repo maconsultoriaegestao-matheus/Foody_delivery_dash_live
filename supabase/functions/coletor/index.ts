@@ -50,6 +50,22 @@ function kmRota(p: any): number | null {
   return Math.round((1.18 * 2 * 6371 * Math.asin(Math.sqrt(h)) + 0.55) * 100) / 100;
 }
 
+// Pizzas no pedido a partir do texto dos itens ("1 x PIZZA BIG", "1 x 2 PIZZA GRANDES PROMOÇÃO",
+// "1 x COMBO 2 PIZZA BIG + 1 DOCE MÉDIA"). Número antes de PIZZA/DOCE multiplica; senão conta 1.
+function qtdPizzas(txt?: string): number | null {
+  if (!txt) return null;
+  let tot = 0;
+  for (const ln of txt.split("\n")) {
+    const m = ln.match(/^\s{0,3}(\d+)\s*x\s+(.+)$/);
+    if (!m) continue;
+    const nome = m[2].toUpperCase();
+    if (!nome.includes("PIZZA") && !nome.includes("DOCE")) continue;
+    const nums = [...nome.matchAll(/(\d+)\s+(?:PIZZA|DOCE)/g)].map((x) => +x[1]);
+    tot += +m[1] * (nums.length ? nums.reduce((a, b) => a + b, 0) : 1);
+  }
+  return tot;
+}
+
 function mapear(p: any, loja: string) {
   return {
     uid: p.uid, loja_id: loja, numero: p.id ?? null, origem: "api", status: p.status,
@@ -58,7 +74,7 @@ function mapear(p: any, loja: string) {
     tipo_entregador: p.courier?.courierType ?? null,
     modo_despacho: p.despatchMode ?? null,
     valor_total: p.orderTotal ?? null, taxa_entrega: p.deliveryFee ?? null, taxa_entregador: p.courierFee ?? null,
-    km_rota: kmRota(p),
+    km_rota: kmRota(p), qtd_pizzas: qtdPizzas(p.orderDetails),
     aberto_em: p.date ?? null, pronto_em: p.readyDate ?? null, despachado_em: p.despatchDate ?? null,
     aceito_em: p.acceptanceDate ?? null, coletado_em: p.collectedDate ?? null, entregue_em: p.deliveryDate ?? null,
     finalizado_em: p.closedDate ?? null, prazo_em: p.deliveryDueDate ?? null, atualizado_em: p.updateDate ?? null,
