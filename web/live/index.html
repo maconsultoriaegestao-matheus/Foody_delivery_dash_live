@@ -292,11 +292,19 @@ function render(){
  else if(idade>120000){s.textContent=`Sem atualização da Foody há ${Math.round(idade/60000)} min`;s.className='off'}
  else{s.textContent=`Ao vivo · Foody atualizado às ${new Date(ms(ultimoColetor.ultimo_sucesso)).toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo'})}`;s.className=''}
 }
-async function iniciarLoja(){
+function aplicarMetas(){
  M={desp:LOJA.meta_despacho_min*60000,esp:LOJA.meta_espera_min*60000,tr:LOJA.meta_transito_min*60000,tot:LOJA.meta_total_min*60000,teto:(LOJA.teto_viagem_min||60)*60000,
   lc:(LOJA.limite_cozinha_min||90)*60000,le:(LOJA.limite_espera_min||60)*60000,lr:(LOJA.limite_rota_min||60)*60000};
- $('nome').textContent=LOJA.nome+' · ao vivo';
  $('metas').textContent=`Metas: despacho ${LOJA.meta_despacho_min} min · espera ${LOJA.meta_espera_min} min · trânsito ${LOJA.meta_transito_min} min · total ${LOJA.meta_total_min} min`;
+}
+// metas e limites alterados em Configurações entram no painel em até 1 minuto, sem recarregar a página
+async function recarregarMetas(){
+ const {data}=await Painel.sb.from('lojas').select('*').eq('id',LOJA.id).maybeSingle();
+ if(data){Object.assign(LOJA,data);aplicarMetas()}
+}
+async function iniciarLoja(){
+ aplicarMetas();
+ $('nome').textContent=LOJA.nome+' · ao vivo';
  await carregar();assinar();render();
 }
 $('logo').innerHTML=Painel.SIMBOLO;
@@ -324,6 +332,7 @@ Painel.exigirLogin('Painel ao vivo').then(async()=>{
  testeHash();window.addEventListener('hashchange',testeHash);
  setInterval(render,1000);
  setInterval(()=>carregar().catch(()=>{}),60000); // rede de segurança caso o tempo real caia
+ setInterval(()=>recarregarMetas().catch(()=>{}),60000);
 }).catch(e=>{$('sync').textContent='Erro: '+(e.message||e);$('sync').className='off'});
 }
 </script></body></html>
