@@ -41,6 +41,7 @@ a.inicio{display:inline-flex;align-items:center;gap:6px;font:inherit;font-weight
 .card.mbc{border-color:var(--mute)}.card.mbc.ok{border-color:var(--ok)}.card.mbc.vez{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc)}.card.mbc.pausa{opacity:.55}
 .card .nm{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:26px;line-height:1.05;overflow-wrap:anywhere}
 .empty{color:var(--mute);text-align:center;padding:20px 0;font-size:14px}
+.inativos{margin:0 max(2vw,14px) 12px;padding:8px 14px;border-radius:10px;background:var(--panel);color:var(--mute);font-size:15px;line-height:1.5}.inativos b{color:var(--ink);font-weight:600}.inativos span{font-size:13px;opacity:.8}
 .riders{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;padding:0 max(2vw,14px) 14px}
 .rider{background:var(--panel);border-radius:10px;padding:10px 12px;border-top:4px solid var(--mute)}
 .rider.rota{border-color:var(--ok)}.rider.loja{border-color:var(--warn)}.rider.pausa{border-color:var(--line)}
@@ -85,6 +86,7 @@ a.inicio{display:inline-flex;align-items:center;gap:6px;font:inherit;font-weight
 <section class="fila" id="fila" aria-live="polite"></section>
 <section class="kpis" id="kpis"></section>
 <main class="board" id="board"></main>
+<div class="inativos" id="inativos" hidden></div>
 <div class="sec" id="h_chk" hidden><span>Verificar · fora do kanban</span><span>Pedidos acima do limite da etapa (provável baixa esquecida na Foody)</span></div>
 <section class="chk" id="chk"></section>
 <section class="placar" id="placar"></section>
@@ -212,13 +214,25 @@ function renderFila(){
  el.innerHTML=`<div class="vez"><small>Motoboy da vez</small><b>${esc(v.entregador)}</b><span>na loja há ${t(v)} min${c?` · já com ${c} ${c>1?'pedidos':'pedido'}`:''}</span></div>
   <div class="prox">${FILA.slice(1,8).map((f,i)=>`<div class="it"><span class="p">${i+2}º</span><b>${esc(f.entregador)}</b><span>${t(f)} min</span></div>`).join('')}${FILA.length>8?`<div class="it"><span>+${FILA.length-8}</span></div>`:''}</div>`;
 }
+// turno atual da unidade (Configurações → Turnos). Horários no fuso de Brasília; antes das 05h pertence ao dia operacional anterior.
+function turnoAtual(now){
+ const ts=(LOJA&&LOJA.turnos)||[];if(!ts.length)return null;
+ const dia=Painel.diaOperacional(),em=(hm)=>{let t=new Date(`${dia}T${hm}:00-03:00`).getTime();if(hm<'05:00')t+=86400000;return t};
+ for(const t of ts){let a=em(t.inicio),b=em(t.fim);if(b<=a)b+=86400000;if(now>=a&&now<b)return {...t,a,b}}
+ // fora de qualquer turno: mostra o último que já começou (ex.: logo depois do fim do almoço)
+ const ini=ts.map(t=>({...t,a:em(t.inicio),b:em(t.fim)<=em(t.inicio)?em(t.fim)+86400000:em(t.fim)})).filter(t=>t.a<=now).sort((x,y)=>y.a-x.a);
+ return ini[0]?{...ini[0],fora:true}:null}
 function render(){
  renderFila();
  if(!LOJA)return;const now=Date.now();$('clock').textContent=hh(now);
  const hoje=Painel.diaOperacional();
  const todos=[...PED.values()].filter(o=>!['cancelled','rejected'].includes(o.st)&&o.ab);
  // só o dia operacional; pedidos abertos de dias anteriores ficam fora
- const dia0=todos.filter(o=>o.dia===hoje);
+ const diaTodo=todos.filter(o=>o.dia===hoje);
+ // com turnos: só pedidos abertos no turno atual (os ainda não entregues de antes continuam aparecendo)
+ const T=turnoAtual(now);
+ const dia0=T?diaTodo.filter(o=>o.ab>=T.a||!o.en):diaTodo;
+ $('nome').textContent=LOJA.nome+' · ao vivo'+(T?` · ${T.nome}${T.fora?' (encerrado)':''}`:'');
  // desvios: etapa acima do limite (provável baixa esquecida)
  const desvio=o=>{if(o.en)return null;if(o.co)return now-o.co>M.lr?['sem baixa',now-o.co]:null;if(o.de)return now-o.de>M.le?['aguardando',now-o.de]:null;return now-o.ab>M.lc?['na cozinha',now-o.ab]:null};
  const chk=dia0.map(o=>[o,desvio(o)]).filter(x=>x[1]);
@@ -243,7 +257,7 @@ function render(){
  const K=[['Em andamento',ativos.length,''],['Atrasados agora',atras,atras?'bad':'ok'],
   ['Até despacho médio',despV.length?mm(avg(despV)):'–',avg(despV)>M.desp?'warn':''],
   ['Coleta → entrega média',trV.length?mm(avg(trV)):'–',avg(trV)>M.tr?'warn':''],
-  ['Entregues hoje',ent.length,''],['No prazo',comPrazo.length?Math.round(noPrazo/comPrazo.length*100)+'%':'–',comPrazo.length&&noPrazo/comPrazo.length<.85?'warn':'ok'],
+  [T?'Entregues no turno':'Entregues hoje',ent.length,''],['No prazo',comPrazo.length?Math.round(noPrazo/comPrazo.length*100)+'%':'–',comPrazo.length&&noPrazo/comPrazo.length<.85?'warn':'ok'],
   [`Dentro da meta ${M.tot/60000} min`,ent.length?Math.round(naMeta/ent.length*100)+'%':'–','']];
  $('kpis').innerHTML=K.map(([l,v,c])=>`<div class="kpi ${c}"><small>${l}</small><div class="num">${v}</div></div>`).join('');
  const col=(t,list,html,nPed)=>`<section class="col"><h2>${t}<span class="num">${list.length}${nPed!=null&&nPed!==list.length?`<small style="font-size:15px;font-weight:500;color:var(--mute)"> · ${nPed} ped.</small>`:''}</span></h2>${list.length?list.map(html).join(''):'<div class="empty">Nenhum pedido</div>'}</section>`;
@@ -255,7 +269,11 @@ function render(){
  FILA.forEach((f,i)=>{if(!livres.some(m=>k(m.mb)===k(f.entregador))&&!Object.entries(vg).some(([mb,vs])=>k(mb)===k(f.entregador)&&vs.some(v=>!v.fim)))
   livres.push({mb:f.entregador,last:ms(f.chegou_em),pos:i+1,chegou:ms(f.chegou_em),pausa:false,n:0,sai:esp.filter(o=>k(o.mb)===k(f.entregador))})});
  livres.sort((a,b)=>(a.pos||99)-(b.pos||99)||(a.pausa-b.pausa)||a.last-b.last);
- const colMb=`<section class="col"><h2>Retorno / na loja<span class="num">${livres.filter(m=>!m.pausa).length}</span></h2>${livres.length?livres.map(m=>cardMb(m,now)).join(''):'<div class="empty">Nenhum motoboy voltando</div>'}</section>`;
+ // sem viagem há mais de 60 min e sem check-in: sai do kanban e vai para a linha de inativos
+ const naCol=livres.filter(m=>!m.pausa),inat=livres.filter(m=>m.pausa).sort((a,b)=>b.last-a.last);
+ const colMb=`<section class="col"><h2>Retorno / na loja<span class="num">${naCol.length}</span></h2>${naCol.length?naCol.map(m=>cardMb(m,now)).join(''):'<div class="empty">Nenhum motoboy voltando</div>'}</section>`;
+ $('inativos').hidden=!inat.length;
+ $('inativos').innerHTML=`<b>Inativos · sem viagem há mais de 60 min (${inat.length}):</b> `+inat.map(m=>`${esc(m.mb)} <span>${hh(m.last)}</span>`).join(' · ');
  $('board').innerHTML=col('Na cozinha',coz,o=>card(o,'coz',now))+col('Aguardando saída',gEsp,g=>grupo(g,'esp',now),esp.length)+col('Em rota',gRota,g=>grupo(g,'rota',now),rota.length)+colMb;
  const nomes=[...new Set([...Object.keys(vg),...esp.map(o=>o.mb).filter(Boolean)])];
  $('riders').innerHTML=nomes.map(mb=>{const vs=vg[mb]||[];
@@ -278,15 +296,17 @@ function render(){
  const emEntrega=new Set(Object.entries(vg).filter(([,vs])=>vs.some(v=>!v.fim)).map(([mb])=>mb));
  const nAt=ativosMb.size,nEnt=[...emEntrega].filter(m=>ativosMb.has(m)).length;
  const todasVg=Object.values(vg).flat(),vFeitas=todasVg.filter(v=>v.fim).length,vAnd=todasVg.length-vFeitas;
- $('placar').innerHTML=`<div><span>Entregadores ativos hoje</span><b>${nAt}</b></div><div class="rota"><span>Em entrega</span><b>${nEnt}</b></div><div class="loja"><span>Aguardo / retorno à base</span><b>${nAt-nEnt}</b></div><div class="via"><span>Viagens hoje<small>${vAnd?`+${vAnd} em andamento`:'concluídas'}</small></span><b>${vFeitas}</b></div>`;
+ const rot=T?'no turno':'hoje',nIn=inat.filter(m=>ativosMb.has(m.mb)).length;
+ $('placar').innerHTML=`<div><span>Entregadores ativos ${rot}</span><b>${nAt-nIn}</b></div><div class="rota"><span>Em entrega</span><b>${nEnt}</b></div><div class="loja"><span>Aguardo / retorno à base${nIn?`<small>+${nIn} inativos (sem viagem há +60 min)</small>`:''}</span><b>${Math.max(0,nAt-nEnt-nIn)}</b></div><div class="via"><span>Viagens ${rot}<small>${vAnd?`+${vAnd} em andamento`:'concluídas'}</small></span><b>${vFeitas}</b></div>`;
  // metas do dia
  const dsem=new Date(hoje+'T12:00:00').getDay(),mHoje=METAS.find(m=>m.dia_semana===dsem)||{};
- const vendas=dia0.reduce((a,o)=>a+(o.val||0),0),mv=+mHoje.meta_vendas||0,mt=+mHoje.meta_viagens||0;
+ const vDia=T?Object.values(viagens(diaTodo.filter(o=>!fora.has(o.uid)))).flat().filter(v=>v.fim).length:vFeitas;
+ const vendas=diaTodo.reduce((a,o)=>a+(o.val||0),0),mv=+mHoje.meta_vendas||0,mt=+mHoje.meta_viagens||0;
  const barra=(rot,txt,at,me)=>{const pc=Math.min(100,at/me*100);return `<div class="alvo ${at>=me?'ok':''}"><div class="l"><span>${rot}</span><span><b>${txt}</b> ${at>=me?'· meta batida!':'· '+Math.round(pc)+'%'}</span></div><div class="tr"><i style="width:${pc.toFixed(1)}%"></i></div></div>`};
- $('metasbar').innerHTML=(mv?barra('Vendas do dia',`${brl(vendas)} / ${brl(mv)}`,vendas,mv):'')+(mt?barra('Viagens do dia',`${vFeitas} / ${mt}`,vFeitas,mt):'');
+ $('metasbar').innerHTML=(mv?barra('Vendas do dia',`${brl(vendas)} / ${brl(mv)}`,vendas,mv):'')+(mt?barra('Viagens do dia',`${vDia} / ${mt}`,vDia,mt):'');
  $('metasbar').hidden=!(mv||mt);
  checarMeta('vendas',vendas,mv,'META DE VENDAS BATIDA!',`${brl(vendas)} vendidos hoje`);
- checarMeta('viagens',vFeitas,mt,'META DE VIAGENS BATIDA!',`${vFeitas} viagens concluídas hoje`);
+ checarMeta('viagens',vDia,mt,'META DE VIAGENS BATIDA!',`${vDia} viagens concluídas hoje`);
  const ok=ultimoColetor&&ultimoColetor.ultimo_sucesso,idade=ok?now-ms(ultimoColetor.ultimo_sucesso):null;
  const s=$('sync');if(!ok){s.textContent='Coletor sem dados';s.className='off'}
  else if(idade>120000){s.textContent=`Sem atualização da Foody há ${Math.round(idade/60000)} min`;s.className='off'}

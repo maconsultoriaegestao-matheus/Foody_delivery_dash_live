@@ -66,6 +66,12 @@ a.inicio{display:inline-flex;align-items:center;gap:6px;font:inherit;font-weight
  <label>Limite espera → "Verificar" (min)<input name="limite_espera_min" type="number" min="1" value="60"></label>
  <label>Limite em rota → "Verificar" (min)<input name="limite_rota_min" type="number" min="1" value="60"></label>
  <label>Teto da viagem p/ hora trabalhada (min)<input name="teto_viagem_min" type="number" min="10" value="60"></label>
+ <fieldset class="full" style="border:1px solid var(--line);border-radius:8px;padding:8px 12px"><legend class="sm">Turnos (opcional): o painel ao vivo mostra só o turno atual</legend>
+  <table class="turnos" style="width:100%"><thead><tr><th style="text-align:left">Nome</th><th style="text-align:left">Início</th><th style="text-align:left">Fim</th></tr></thead><tbody>
+  <tr><td><input name="tn_0" placeholder="Almoço" maxlength="20" style="width:100%"></td><td><input name="ti_0" type="time" style="width:100%"></td><td><input name="tf_0" type="time" style="width:100%"></td></tr>
+  <tr><td><input name="tn_1" placeholder="Jantar" maxlength="20" style="width:100%"></td><td><input name="ti_1" type="time" style="width:100%"></td><td><input name="tf_1" type="time" style="width:100%"></td></tr>
+  <tr><td><input name="tn_2" placeholder="" maxlength="20" style="width:100%"></td><td><input name="ti_2" type="time" style="width:100%"></td><td><input name="tf_2" type="time" style="width:100%"></td></tr>
+  </tbody></table><p class="sm" style="margin:4px 0 0">Fim antes do início = passa da meia-noite (ex.: 18:00 às 01:00). Em branco = dia inteiro.</p></fieldset>
  <label>Situação<select name="ativa"><option value="true">Ativa</option><option value="false">Pausada</option></select></label>
  <div class="msg"></div><div class="acts"><button type="button" data-fechar>Cancelar</button><button class="pri">Salvar</button></div></form></dialog>
 
@@ -133,6 +139,7 @@ function abrirLoja(l){const f=$('f_loja');f.reset();msg(f,'');
  $('t_loja').textContent=l?'Editar unidade':'Nova unidade';$('w_cli').hidden=!!l;$('w_tok').hidden=!!l;
  f.id.value=l?l.id:'';
  if(l)['nome','meta_despacho_min','meta_espera_min','meta_transito_min','meta_total_min','limite_cozinha_min','limite_espera_min','limite_rota_min','teto_viagem_min'].forEach(k=>f[k].value=l[k]??'');
+ [0,1,2].forEach(i=>{const t=(l&&l.turnos||[])[i]||{};f['tn_'+i].value=t.nome||'';f['ti_'+i].value=t.inicio||'';f['tf_'+i].value=t.fim||''});
  f.ativa.value=l?String(l.ativa):'true';
  if(!D.clientes.length)msg(f,'Cadastre um cliente primeiro.','err');
  $('d_loja').showModal()}
@@ -173,7 +180,8 @@ $('f_cli').onsubmit=async e=>{e.preventDefault();const f=e.target;msg(f,'Salvand
 
 $('f_loja').onsubmit=async e=>{e.preventDefault();const f=e.target;msg(f,'Salvando…');
  const n=k=>+f[k].value,dados={nome:f.nome.value,ativa:f.ativa.value==='true',meta_despacho_min:n('meta_despacho_min'),meta_espera_min:n('meta_espera_min'),
-  meta_transito_min:n('meta_transito_min'),meta_total_min:n('meta_total_min'),limite_cozinha_min:n('limite_cozinha_min'),limite_espera_min:n('limite_espera_min'),limite_rota_min:n('limite_rota_min'),teto_viagem_min:n('teto_viagem_min')};
+  meta_transito_min:n('meta_transito_min'),meta_total_min:n('meta_total_min'),limite_cozinha_min:n('limite_cozinha_min'),limite_espera_min:n('limite_espera_min'),limite_rota_min:n('limite_rota_min'),teto_viagem_min:n('teto_viagem_min'),
+  turnos:(()=>{const t=[0,1,2].map(i=>({nome:f['tn_'+i].value.trim()||['Almoço','Jantar','Turno 3'][i],inicio:f['ti_'+i].value,fim:f['tf_'+i].value})).filter(t=>t.inicio&&t.fim);return t.length?t:null})()};
  try{
   if(f.id.value){await Painel.admin('salvar_loja',{id:f.id.value,...dados})}
   else{const r=await Painel.admin('salvar_loja',{cliente_id:f.cliente_id.value,...dados});

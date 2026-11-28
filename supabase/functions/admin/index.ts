@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
         // cria/edita a unidade; na criação, cria também a credencial (1 token por unidade)
         const campos: Record<string, unknown> = {};
         for (const k of ["nome", "ativa", "meta_despacho_min", "meta_espera_min", "meta_transito_min", "meta_total_min",
-                         "limite_cozinha_min", "limite_espera_min", "limite_rota_min", "teto_viagem_min", "collection_point_id"]) {
+                         "limite_cozinha_min", "limite_espera_min", "limite_rota_min", "teto_viagem_min", "collection_point_id", "turnos"]) {
           if (b[k] !== undefined) campos[k] = b[k];
         }
         if (b.id) {
